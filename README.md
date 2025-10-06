@@ -343,6 +343,6 @@ Special thanks to:
 
 ---
 
-**Version**: 1.2 (core), 2.6.0 (margins), 1.1 (fullwidth)  
+**Version**: 1.2.0 (core), 1.2.0 (margins), 1.2.0 (fullwidth)  
 **Last updated**: October 2025  
 **Status**: Active development
