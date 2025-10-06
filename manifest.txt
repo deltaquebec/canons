@@ -1,0 +1,10 @@
+manifest.txt
+README.md
+docs/documentation-canons.pdf
+docs/documentation-canons-margins.pdf
+docs/documentation-canons-fullwidth.pdf
+src/canons.sty
+src/canons-margins.sty
+src/canons-fullwidth.sty
+bts/bts-sketch.pdf
+bts/bts-ratio.pdf
