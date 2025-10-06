@@ -1,0 +1,983 @@
+%% ==============================================================================
+%% canons.sty
+%% ==============================================================================
+%% Classical Page Canon Implementation with Margin Control
+%% ==============================================================================
+%% Version:     1.2.0
+%% Date:        2025/09/26
+%% Author:      Daniel Quigley
+%% Contact:     dquigleydev@gmail.com
+%% License:     LaTeX Project Public License 1.3c
+%% ==============================================================================
+%%
+%% DESCRIPTION
+%% -----------
+%% Implements classical page layout canons (Van de Graaf, Villard de Honnecourt,
+%% Tufte, Canon des Ateliers, Grid) with intelligent margin control for marginalia.
+%% Provides precise proportional margins based on historical book design principles
+%% while supporting modern document requirements.
+%%
+%% USAGE
+%% -----
+%% \usepackage[<options>]{canons}
+%%
+%% OPTIONS
+%% -------
+%% Canon Selection:
+%%   canon=vdg            : Van de Graaf canon (1/9 margins) [default]
+%%   canon=vdh            : Villard de Honnecourt canon (N-fold divisions)
+%%   canon=tufte          : Edward Tufte's book design canon
+%%   canon=ateliers       : Canon des Ateliers (ordinary/neater/luxury)
+%%   canon=grid           : Grid-based canon with N×N divisions
+%%   canon=false          : Disable canons, use standard geometry
+%%
+%% Margin Control:
+%%   margins=symmetric    : Two-sided with alternating inner/outer [default for book/report]
+%%   margins=antisymmetric: Two-sided with materials on inner margins
+%%   margins=right        : Single-sided, margin material on right [default for article]
+%%   margins=left         : Single-sided, margin material on left
+%%
+%% Canon-Specific Options:
+%%   vdhN=<3|6|9|12|15>   : Division factor for Villard de Honnecourt [default: 6]
+%%   ateliersstyle=<ordinary|neater|luxury> : Style for Canon des Ateliers [default: ordinary]
+%%
+%% Grid Canon Options:
+%%   gridN=<value>        : Number of grid divisions (>= 3) [default: 6]
+%%   gridinner=<cells>    : Grid cells for inner margin [default: 1]
+%%   gridouter=<cells>    : Grid cells for outer margin [default: 2, or 1 if N=3]
+%%   gridtop=<cells>      : Grid cells for top margin [default: 1]
+%%   gridbottom=<cells>   : Grid cells for bottom margin [default: 2, or 1 if N=3]
+%%
+%% Gutter Options:
+%%   gutterval=<dimension>: Gutter width for binding [default: 0mm]
+%%   guttermode=geometry  : Apply gutter by adjusting margins [default]
+%%   guttermode=satzspiegel: Apply gutter by reducing page width
+%%
+%% Layout Options:
+%%   paper=<size>         : Paper size (passed to geometry)
+%%   showframe            : Display page layout frame for debugging
+%%   landscape            : Landscape orientation
+%%
+%% Debug Options:
+%%   debug                : Enable debug output in log
+%%
+%% COMMANDS
+%% --------
+%% \pagecanoninfo       : Display comprehensive canon and layout information
+%% \pagecanonmargins    : Returns current margin mode setting
+%% \pagecanonsetup{...} : Configure options after loading (re-applies layout)
+%%
+%% DIMENSIONS (for downstream packages)
+%% -------------------------------------
+%% \marginandtext       : Combined width of text block + margin + separator
+%% \marginandsep        : Combined width of margin + separator
+%% \fullwidthoverhang   : Extension distance into margin area
+%%
+%% CLASS SUPPORT
+%% -------------
+%% book    : Full support with symmetric margins default
+%% report  : Full support with symmetric margins default
+%% article : Full support with right margins default
+%% Others  : Fallback to symmetric margins (with warnings for memoir/KOMA, twocolumn)
+%%
+%% DEPENDENCIES
+%% ------------
+%% geometry, calc, xparse, ifthen, etoolbox, pgfkeys, array
+%%
+%% ==============================================================================
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{canons}[2025/09/26 v1.2.0 Classical Page Canon Implementation with Grid Support]
+
+% ------------------------------------------------------------
+% Required packages (except geometry, loaded later)
+% ------------------------------------------------------------
+\RequirePackage{calc}
+\RequirePackage{xparse}
+\RequirePackage{ifthen}
+\RequirePackage{etoolbox}
+\RequirePackage{pgfkeys}
+\RequirePackage{array}
+
+% ------------------------------------------------------------
+% Document class detection
+% ------------------------------------------------------------
+\newif\ifpagecanon@book
+\newif\ifpagecanon@report
+\newif\ifpagecanon@article
+
+\@ifclassloaded{book}{%
+  \pagecanon@booktrue
+  \PackageInfo{canons}{Document class detected: book}%
+}{}
+\@ifclassloaded{report}{%
+  \pagecanon@reporttrue
+  \PackageInfo{canons}{Document class detected: report}%
+}{}
+\@ifclassloaded{article}{%
+  \pagecanon@articletrue
+  \PackageInfo{canons}{Document class detected: article}%
+}{}
+
+% Warn about classes with known interactions
+\@ifclassloaded{memoir}{%
+  \PackageWarning{canons}{'memoir' class detected. memoir manages page layout itself; canons may conflict. Consider using memoir's native interfaces}%
+}{}
+\@ifclassloaded{scrbook}{%
+  \PackageWarning{canons}{KOMA-Script class 'scrbook' detected. KOMA manages layout; canons may conflict}%
+}{}
+\@ifclassloaded{scrreprt}{%
+  \PackageWarning{canons}{KOMA-Script class 'scrreprt' detected. KOMA manages layout; canons may conflict}%
+}{}
+\@ifclassloaded{scrartcl}{%
+  \PackageWarning{canons}{KOMA-Script class 'scrartcl' detected. KOMA manages layout; canons may conflict}%
+}{}
+
+% ------------------------------------------------------------
+% Package options (our own)
+% ------------------------------------------------------------
+\newif\ifpagecanon@showframe
+\newif\ifpagecanon@landscape
+\newif\ifpagecanon@debug
+\newif\ifpagecanon@insetup
+
+\newcommand{\pagecanon@canon}{vdg}
+\newcommand{\pagecanon@gutterval}{0mm}
+\newcommand{\pagecanon@guttermode}{geometry}
+\newcommand{\pagecanon@paper}{}
+\newcommand{\pagecanon@vdhN}{6}
+\newcommand{\pagecanon@ateliersstyle}{ordinary}
+\newcommand{\pagecanon@gridN}{6}           % Default N=6 for 6x6 grid
+\newcommand{\pagecanon@gridinner}{1}       % Default 1 cell for inner margin
+\newcommand{\pagecanon@gridouter}{2}       % Default 2 cells for outer margin
+\newcommand{\pagecanon@gridtop}{1}         % Default 1 cell for top margin
+\newcommand{\pagecanon@gridbottom}{2}      % Default 2 cells for bottom margin
+
+% Margin control options
+\newcommand{\pagecanon@margins}{symmetric}  % default for book/report
+% Auto-detect default based on document class
+\ifpagecanon@article
+  \renewcommand{\pagecanon@margins}{right}  % default for article
+  \PackageInfo{canons}{Article class: defaulting to margins=right}%
+\fi
+
+% Store geometry options to pass later
+\newcommand{\pagecanon@geometryoptions}{}
+% Store our key=value options for processing
+\newcommand{\pagecanon@ouroptions}{}
+
+% ------------------------------------------------------------
+% Debug macro
+% ------------------------------------------------------------
+\newcommand{\pagecanon@debug}[1]{%
+  \ifpagecanon@debug
+    \PackageInfo{canons}{[DEBUG] #1}%
+  \fi
+}
+
+% ------------------------------------------------------------
+% Dimensions for downstream packages
+% ------------------------------------------------------------
+\newlength\marginandtext
+\newlength\marginandsep
+\newlength\fullwidthoverhang
+\newlength\overflowingheadlen
+
+% ------------------------------------------------------------
+% Option processing
+% ------------------------------------------------------------
+
+% Helper to check if a key belongs to us
+\newcommand{\pagecanon@isourkey}[1]{%
+  \def\temp@isours{false}%
+  % Check for our specific keys (but NOT paper, which goes to both)
+  \@expandtwoargs\in@{canon}{#1}\ifin@ \def\temp@isours{true}\fi
+  \@expandtwoargs\in@{gutterval}{#1}\ifin@ \def\temp@isours{true}\fi
+  \@expandtwoargs\in@{guttermode}{#1}\ifin@ \def\temp@isours{true}\fi
+  \@expandtwoargs\in@{vdhN}{#1}\ifin@ \def\temp@isours{true}\fi
+  \@expandtwoargs\in@{ateliersstyle}{#1}\ifin@ \def\temp@isours{true}\fi
+  \@expandtwoargs\in@{margins}{#1}\ifin@ \def\temp@isours{true}\fi
+  \@expandtwoargs\in@{debug}{#1}\ifin@ \def\temp@isours{true}\fi
+  \@expandtwoargs\in@{gridN}{#1}\ifin@ \def\temp@isours{true}\fi
+  \@expandtwoargs\in@{gridinner}{#1}\ifin@ \def\temp@isours{true}\fi
+  \@expandtwoargs\in@{gridouter}{#1}\ifin@ \def\temp@isours{true}\fi
+  \@expandtwoargs\in@{gridtop}{#1}\ifin@ \def\temp@isours{true}\fi
+  \@expandtwoargs\in@{gridbottom}{#1}\ifin@ \def\temp@isours{true}\fi
+}
+
+\DeclareOption*{%
+  \edef\temp@opt{\CurrentOption}%
+  % Check for our bare boolean options
+  \def\temp@processed{false}%
+  \ifthenelse{\equal{\temp@opt}{showframe}}{%
+    \pagecanon@showframetrue
+    % Also pass to geometry
+    \ifx\pagecanon@geometryoptions\empty
+      \edef\pagecanon@geometryoptions{showframe}%
+    \else
+      \edef\pagecanon@geometryoptions{\pagecanon@geometryoptions,showframe}%
+    \fi
+    \def\temp@processed{true}%
+  }{}%
+  \ifthenelse{\equal{\temp@opt}{landscape}}{%
+    \pagecanon@landscapetrue
+    % Also pass to geometry
+    \ifx\pagecanon@geometryoptions\empty
+      \edef\pagecanon@geometryoptions{landscape}%
+    \else
+      \edef\pagecanon@geometryoptions{\pagecanon@geometryoptions,landscape}%
+    \fi
+    \def\temp@processed{true}%
+  }{}%
+  \ifthenelse{\equal{\temp@opt}{debug}}{%
+    \pagecanon@debugtrue
+    \def\temp@processed{true}%
+  }{}%
+  %
+  % If not processed yet
+  \ifthenelse{\equal{\temp@processed}{false}}{%
+    % Check if it contains '='
+    \@expandtwoargs\in@{=}{\temp@opt}%
+    \ifin@
+      % It's a key=value option
+      \pagecanon@isourkey{\temp@opt}%
+      \ifthenelse{\equal{\temp@isours}{true}}{%
+        % It's ours, save for processing
+        \ifx\pagecanon@ouroptions\empty
+          \edef\pagecanon@ouroptions{\temp@opt}%
+        \else
+          \edef\pagecanon@ouroptions{\pagecanon@ouroptions,\temp@opt}%
+        \fi
+      }{%
+        % Not ours, pass to geometry (including paper=)
+        \ifx\pagecanon@geometryoptions\empty
+          \edef\pagecanon@geometryoptions{\temp@opt}%
+        \else
+          \edef\pagecanon@geometryoptions{\pagecanon@geometryoptions,\temp@opt}%
+        \fi
+        % If it's paper=, also save the value for our use
+        \@expandtwoargs\in@{paper=}{\temp@opt}%
+        \ifin@
+          \ifx\pagecanon@ouroptions\empty
+            \edef\pagecanon@ouroptions{\temp@opt}%
+          \else
+            \edef\pagecanon@ouroptions{\pagecanon@ouroptions,\temp@opt}%
+          \fi
+        \fi
+      }%
+    \else
+      % Bare option, pass to geometry
+      \ifx\pagecanon@geometryoptions\empty
+        \edef\pagecanon@geometryoptions{\temp@opt}%
+      \else
+        \edef\pagecanon@geometryoptions{\pagecanon@geometryoptions,\temp@opt}%
+      \fi
+    \fi
+  }{}%
+}
+
+\ProcessOptions\relax
+
+\pagecanon@debug{Initial settings: canon=\pagecanon@canon, margins=\pagecanon@margins}
+
+% ------------------------------------------------------------
+% Define pgfkeys for our options
+% ------------------------------------------------------------
+\pgfkeys{
+  /pagecanon/.cd,
+  canon/.store in=\pagecanon@canon,
+  canon/.default=vdg,
+  % canon=false disables all canon calculations
+  canon/.value required,
+  gutterval/.store in=\pagecanon@gutterval,
+  gutterval/.default=0mm,
+  guttermode/.store in=\pagecanon@guttermode,
+  guttermode/.default=geometry,
+  paper/.store in=\pagecanon@paper,
+  paper/.default=,
+  vdhN/.store in=\pagecanon@vdhN,
+  vdhN/.default=6,
+  ateliersstyle/.store in=\pagecanon@ateliersstyle,
+  ateliersstyle/.default=ordinary,
+  gridN/.store in=\pagecanon@gridN,
+  gridN/.default=6,
+  gridinner/.store in=\pagecanon@gridinner,
+  gridinner/.default=1,
+  gridouter/.store in=\pagecanon@gridouter,
+  gridouter/.default=2,
+  gridtop/.store in=\pagecanon@gridtop,
+  gridtop/.default=1,
+  gridbottom/.store in=\pagecanon@gridbottom,
+  gridbottom/.default=2,
+  margins/.store in=\pagecanon@margins,
+  margins/.default=symmetric,
+  debug/.is if=pagecanon@debug,
+  % Ignore unknown keys
+  .unknown/.code={}
+}
+
+% Process our options now
+\ifx\pagecanon@ouroptions\empty\else
+  \expandafter\pgfkeys\expandafter{\expandafter/\expandafter p\expandafter a\expandafter g\expandafter e\expandafter c\expandafter a\expandafter n\expandafter o\expandafter n\expandafter/\expandafter.\expandafter c\expandafter d\expandafter,\pagecanon@ouroptions}%
+\fi
+
+\pagecanon@debug{Options processed: canon=\pagecanon@canon, margins=\pagecanon@margins}
+\pagecanon@debug{Geometry options to forward: \pagecanon@geometryoptions}
+
+% Add margin-specific geometry options based on margins setting
+\ifthenelse{\equal{\pagecanon@margins}{antisymmetric}}{%
+  \ifx\pagecanon@geometryoptions\empty
+    \edef\pagecanon@geometryoptions{reversemarginpar}%
+  \else
+    \edef\pagecanon@geometryoptions{\pagecanon@geometryoptions,reversemarginpar}%
+  \fi
+  \pagecanon@debug{Adding reversemarginpar for antisymmetric margins}%
+}{}
+
+% For single-sided layouts, add asymmetric option
+\ifthenelse{\equal{\pagecanon@margins}{right} \OR \equal{\pagecanon@margins}{left}}{%
+  \ifx\pagecanon@geometryoptions\empty
+    \edef\pagecanon@geometryoptions{asymmetric}%
+  \else
+    \edef\pagecanon@geometryoptions{\pagecanon@geometryoptions,asymmetric}%
+  \fi
+  \pagecanon@debug{Adding asymmetric for single-sided layout}%
+}{}
+
+% Now load geometry with all its options
+\ifx\pagecanon@geometryoptions\empty
+  \RequirePackage{geometry}%
+  \pagecanon@debug{Loading geometry with no additional options}%
+\else
+  \expandafter\PassOptionsToPackage\expandafter{\pagecanon@geometryoptions}{geometry}%
+  \RequirePackage{geometry}%
+  \pagecanon@debug{Loading geometry with options: \pagecanon@geometryoptions}%
+\fi
+
+% ------------------------------------------------------------
+% User command for post-loading configuration
+% ------------------------------------------------------------
+\newcommand{\pagecanonsetup}[1]{%
+  \pgfkeys{/pagecanon/.cd, #1}%
+  \ifpagecanon@insetup\relax\else
+    \pagecanon@insetuptrue
+    \pagecanon@setup
+    \pagecanon@insetupfalse
+  \fi
+}
+
+% ------------------------------------------------------------
+% Internals
+% ------------------------------------------------------------
+\newlength{\pagecanon@pagewidth}
+\newlength{\pagecanon@pageheight}
+\newlength{\pagecanon@leafwidth}
+\newlength{\pagecanon@innermargin}
+\newlength{\pagecanon@outermargin}
+\newlength{\pagecanon@topmargin}
+\newlength{\pagecanon@bottommargin}
+\newlength{\pagecanon@footskip}
+\newlength{\pagecanon@marginparsep}
+\newlength{\pagecanon@marginparwidth}
+\newlength{\pagecanon@gutterlength}
+\newlength{\pagecanon@textwidth}
+\newlength{\pagecanon@textheight}
+\newlength{\pagecanon@tmpdima}
+\newlength{\pagecanon@cellwidth}
+\newlength{\pagecanon@cellheight}
+
+% ------------------------------------------------------------
+% Canon definitions with proportional factors
+% ------------------------------------------------------------
+
+% Van de Graaf canon
+\newcommand{\pagecanon@vdg}[2]{% #1=leafwidth, #2=pageheight
+  \setlength{\pagecanon@innermargin}{.111111#1}% 1/9
+  \setlength{\pagecanon@outermargin}{.222222#1}% 2/9
+  \setlength{\pagecanon@topmargin}{.111111#2}% 1/9
+  \setlength{\pagecanon@bottommargin}{.222222#2}% 2/9
+  \setlength{\pagecanon@footskip}{.5\pagecanon@bottommargin}%
+  \setlength{\pagecanon@marginparsep}{.022222#1}% ~1/45
+  \setlength{\pagecanon@marginparwidth}{.177775#1}% ~8/45
+  \pagecanon@debug{Van de Graaf canon: 1/9 inner, 2/9 outer margins}%
+}
+
+% Villard de Honnecourt canon
+\newcommand{\pagecanon@vdh}[3]{% #1=leafwidth, #2=pageheight, #3=N
+  \ifthenelse{\equal{#3}{3}}{%
+    \setlength{\pagecanon@innermargin}{.166667#1}% 1/6
+    \setlength{\pagecanon@outermargin}{.333333#1}% 1/3
+    \setlength{\pagecanon@topmargin}{.25#1}% 1/4 of width
+    \setlength{\pagecanon@bottommargin}{.5#1}% 1/2 of width
+  }{%
+  \ifthenelse{\equal{#3}{6}}{%
+    \setlength{\pagecanon@innermargin}{.111111#1}% 1/9
+    \setlength{\pagecanon@outermargin}{.222222#1}% 2/9
+    \setlength{\pagecanon@topmargin}{.166667#1}% 1/6 of width
+    \setlength{\pagecanon@bottommargin}{.333333#1}% 1/3 of width
+  }{%
+  \ifthenelse{\equal{#3}{9}}{%
+    \setlength{\pagecanon@innermargin}{.083333#1}% 1/12
+    \setlength{\pagecanon@outermargin}{.166667#1}% 1/6
+    \setlength{\pagecanon@topmargin}{.125#1}% 1/8 of width
+    \setlength{\pagecanon@bottommargin}{.25#1}% 1/4 of width
+  }{%
+  \ifthenelse{\equal{#3}{12}}{%
+    \setlength{\pagecanon@innermargin}{.066667#1}% 1/15
+    \setlength{\pagecanon@outermargin}{.133333#1}% 2/15
+    \setlength{\pagecanon@topmargin}{.1#1}% 1/10 of width
+    \setlength{\pagecanon@bottommargin}{.2#1}% 1/5 of width
+  }{%
+  \ifthenelse{\equal{#3}{15}}{%
+    \setlength{\pagecanon@innermargin}{.055556#1}% 1/18
+    \setlength{\pagecanon@outermargin}{.111111#1}% 1/9
+    \setlength{\pagecanon@topmargin}{.083333#1}% 1/12 of width
+    \setlength{\pagecanon@bottommargin}{.166667#1}% 1/6 of width
+  }{%
+    \setlength{\pagecanon@innermargin}{.111111#1}%
+    \setlength{\pagecanon@outermargin}{.222222#1}%
+    \setlength{\pagecanon@topmargin}{.166667#1}%
+    \setlength{\pagecanon@bottommargin}{.333333#1}%
+  }}}}}%
+  \setlength{\pagecanon@footskip}{.5\pagecanon@bottommargin}%
+  \ifthenelse{\equal{#3}{3}}{%
+    \setlength{\pagecanon@marginparsep}{.047616#1}%
+    \setlength{\pagecanon@marginparwidth}{.238102#1}%
+  }{%
+  \ifthenelse{\equal{#3}{6}}{%
+    \setlength{\pagecanon@marginparsep}{.02222#1}%
+    \setlength{\pagecanon@marginparwidth}{.177782#1}%
+  }{%
+  \ifthenelse{\equal{#3}{9}}{%
+    \setlength{\pagecanon@marginparsep}{.01282#1}%
+    \setlength{\pagecanon@marginparwidth}{.141025#1}%
+  }{%
+  \ifthenelse{\equal{#3}{12}}{%
+    \setlength{\pagecanon@marginparsep}{.0083218#1}%
+    \setlength{\pagecanon@marginparwidth}{.116685#1}%
+  }{%
+  \ifthenelse{\equal{#3}{15}}{%
+    \setlength{\pagecanon@marginparsep}{.003217#1}%
+    \setlength{\pagecanon@marginparwidth}{.099411#1}%
+  }{%
+    \setlength{\pagecanon@marginparsep}{.02#1}%
+    \setlength{\pagecanon@marginparwidth}{.15#1}%
+  }}}}}%
+  \pagecanon@debug{Villard de Honnecourt canon N=#3}%
+}
+
+% Tufte canon
+\newcommand{\pagecanon@tufte}[2]{% #1=leafwidth, #2=pageheight
+  \setlength{\pagecanon@innermargin}{.117647#1}% ~1/8.5
+  \setlength{\pagecanon@outermargin}{.372941#1}% ~3/8
+  \setlength{\pagecanon@topmargin}{.090909#2}% 1/11
+  \setlength{\pagecanon@bottommargin}{.136364#2}% 3/22
+  \setlength{\pagecanon@footskip}{.5\pagecanon@bottommargin}%
+  \setlength{\pagecanon@marginparsep}{.038824#1}% ~1/26
+  \setlength{\pagecanon@marginparwidth}{.235294#1}% ~4/17
+  \pagecanon@debug{Tufte canon: asymmetric with wide outer margin}%
+}
+
+% Canon des Ateliers
+\newcommand{\pagecanon@ateliers}[3]{% #1=leafwidth, #2=pageheight, #3=style
+  \ifthenelse{\equal{#3}{ordinary}}{%
+    \setlength{\pagecanon@innermargin}{.1#1}% 1/10
+    \setlength{\pagecanon@outermargin}{.15#1}% 3/20
+    \setlength{\pagecanon@topmargin}{.125#1}% 1/8 of width
+    \setlength{\pagecanon@bottommargin}{.175#1}% 7/40 of width
+  }{%
+  \ifthenelse{\equal{#3}{neater}}{%
+    \setlength{\pagecanon@innermargin}{.133333#1}% 2/15
+    \setlength{\pagecanon@outermargin}{.2#1}% 1/5
+    \setlength{\pagecanon@topmargin}{.166667#1}% 1/6 of width
+    \setlength{\pagecanon@bottommargin}{.233333#1}% 7/30 of width
+  }{%
+  \ifthenelse{\equal{#3}{luxury}}{%
+    \setlength{\pagecanon@innermargin}{.15#1}% 3/20
+    \setlength{\pagecanon@outermargin}{.225#1}% 9/40
+    \setlength{\pagecanon@topmargin}{.1875#1}% 3/16 of width
+    \setlength{\pagecanon@bottommargin}{.2625#1}% 21/80 of width
+  }{%
+    \setlength{\pagecanon@innermargin}{.1#1}%
+    \setlength{\pagecanon@outermargin}{.15#1}%
+    \setlength{\pagecanon@topmargin}{.125#1}%
+    \setlength{\pagecanon@bottommargin}{.175#1}%
+  }}}%
+  \setlength{\pagecanon@footskip}{.5\pagecanon@bottommargin}%
+  \setlength{\pagecanon@marginparsep}{.017974#1}%
+  \setlength{\pagecanon@marginparwidth}{.106209#1}%
+  \pagecanon@debug{Canon des Ateliers: style=#3}%
+}
+
+% Grid canon
+\newcommand{\pagecanon@grid}[2]{% #1=leafwidth, #2=pageheight
+  % Validate gridN >= 3
+  \ifnum\pagecanon@gridN<3
+    \PackageWarning{canons}{gridN must be >= 3, setting to 3}%
+    \renewcommand{\pagecanon@gridN}{3}%
+  \fi
+  % Failsafe for gridN=3: adjust defaults to 1:1:1:1 if using defaults
+  \ifnum\pagecanon@gridN=3
+    \ifthenelse{\equal{\pagecanon@gridinner}{1} \AND \equal{\pagecanon@gridouter}{2}}{%
+      \renewcommand{\pagecanon@gridinner}{1}%
+      \renewcommand{\pagecanon@gridouter}{1}%
+      \PackageInfo{canons}{Grid N=3 failsafe: adjusting to 1:1 horizontal margins}%
+    }{}%
+    \ifthenelse{\equal{\pagecanon@gridtop}{1} \AND \equal{\pagecanon@gridbottom}{2}}{%
+      \renewcommand{\pagecanon@gridtop}{1}%
+      \renewcommand{\pagecanon@gridbottom}{1}%
+      \PackageInfo{canons}{Grid N=3 failsafe: adjusting to 1:1 vertical margins}%
+    }{}%
+  \fi
+  % Calculate cell dimensions (lengths defined globally)
+  \setlength{\pagecanon@cellwidth}{\dimexpr#1/\pagecanon@gridN\relax}%
+  \setlength{\pagecanon@cellheight}{\dimexpr#2/\pagecanon@gridN\relax}%
+  % Validate margin cell counts
+  \newcount\pagecanon@totalhoriz
+  \newcount\pagecanon@totalvert
+  \pagecanon@totalhoriz=\pagecanon@gridinner
+  \advance\pagecanon@totalhoriz by \pagecanon@gridouter
+  \pagecanon@totalvert=\pagecanon@gridtop
+  \advance\pagecanon@totalvert by \pagecanon@gridbottom
+  % Check if margins leave room for text
+  \ifnum\pagecanon@totalhoriz<\pagecanon@gridN\else
+    \PackageError{canons}{Grid margins too large: inner(\pagecanon@gridinner) + outer(\pagecanon@gridouter) >= N(\pagecanon@gridN)}{}%
+  \fi
+  \ifnum\pagecanon@totalvert<\pagecanon@gridN\else
+    \PackageError{canons}{Grid margins too large: top(\pagecanon@gridtop) + bottom(\pagecanon@gridbottom) >= N(\pagecanon@gridN)}{}%
+  \fi
+  % Set margins based on cell counts
+  \setlength{\pagecanon@innermargin}{\dimexpr\pagecanon@gridinner\pagecanon@cellwidth\relax}%
+  \setlength{\pagecanon@outermargin}{\dimexpr\pagecanon@gridouter\pagecanon@cellwidth\relax}%
+  \setlength{\pagecanon@topmargin}{\dimexpr\pagecanon@gridtop\pagecanon@cellheight\relax}%
+  \setlength{\pagecanon@bottommargin}{\dimexpr\pagecanon@gridbottom\pagecanon@cellheight\relax}%
+  \setlength{\pagecanon@footskip}{.5\pagecanon@bottommargin}%
+  % Heuristic for marginpar: marginparsep on both sides
+  % marginparwidth = outermargin; 2*marginparsep
+  % First determine a reasonable marginparsep (proportional to cell width)
+  \setlength{\pagecanon@marginparsep}{\dimexpr\pagecanon@cellwidth/6\relax}%
+  % Ensure minimum marginparsep
+  \ifdim\pagecanon@marginparsep<7pt
+    \setlength{\pagecanon@marginparsep}{7pt}%
+  \fi
+  % Calculate marginparwidth with marginparsep buffer on both sides
+  \setlength{\pagecanon@marginparwidth}{\pagecanon@outermargin}%
+  \addtolength{\pagecanon@marginparwidth}{-2\pagecanon@marginparsep}%
+  % Ensure marginparwidth is positive and reasonable
+  \ifdim\pagecanon@marginparwidth<20pt
+    % If outer margin is too small, reduce marginparsep
+    \setlength{\pagecanon@marginparsep}{\dimexpr(\pagecanon@outermargin-20pt)/2\relax}%
+    \ifdim\pagecanon@marginparsep<3pt
+      \setlength{\pagecanon@marginparsep}{3pt}% Absolute minimum
+    \fi
+    \setlength{\pagecanon@marginparwidth}{\pagecanon@outermargin}%
+    \addtolength{\pagecanon@marginparwidth}{-2\pagecanon@marginparsep}%
+    \ifdim\pagecanon@marginparwidth<10pt
+      \setlength{\pagecanon@marginparwidth}{10pt}% Absolute minimum width
+    \fi
+  \fi
+  \pagecanon@debug{Grid canon: N=\pagecanon@gridN, inner=\pagecanon@gridinner, outer=\pagecanon@gridouter, top=\pagecanon@gridtop, bottom=\pagecanon@gridbottom}%
+  \pagecanon@debug{Grid cell size: \the\pagecanon@cellwidth{} x \the\pagecanon@cellheight}%
+  \pagecanon@debug{Grid marginpar: sep=\the\pagecanon@marginparsep, width=\the\pagecanon@marginparwidth}%
+}
+
+% Gutter application
+\newcommand{\pagecanon@applyguttergeometry}{%
+  \addtolength{\pagecanon@innermargin}{\pagecanon@gutterlength}%
+  \addtolength{\pagecanon@outermargin}{-\pagecanon@gutterlength}%
+  \ifdim\pagecanon@outermargin<0pt \setlength{\pagecanon@outermargin}{0pt}\fi
+  \pagecanon@debug{Applied gutter in geometry mode: \the\pagecanon@gutterlength}%
+}
+
+\newcommand{\pagecanon@applyguttersatzspiegel}{%
+  \setlength{\pagecanon@leafwidth}{\pagecanon@pagewidth}%
+  \addtolength{\pagecanon@leafwidth}{-\pagecanon@gutterlength}%
+  \pagecanon@debug{Applied gutter in satzspiegel mode: effective leaf width=\the\pagecanon@leafwidth}%
+  \ifthenelse{\equal{\pagecanon@canon}{vdg}}{%
+    \pagecanon@vdg{\pagecanon@leafwidth}{\pagecanon@pageheight}%
+  }{%
+  \ifthenelse{\equal{\pagecanon@canon}{vdh}}{%
+    \pagecanon@vdh{\pagecanon@leafwidth}{\pagecanon@pageheight}{\pagecanon@vdhN}%
+  }{%
+  \ifthenelse{\equal{\pagecanon@canon}{tufte}}{%
+    \pagecanon@tufte{\pagecanon@leafwidth}{\pagecanon@pageheight}%
+  }{%
+  \ifthenelse{\equal{\pagecanon@canon}{ateliers}}{%
+    \pagecanon@ateliers{\pagecanon@leafwidth}{\pagecanon@pageheight}{\pagecanon@ateliersstyle}%
+  }{%
+  \ifthenelse{\equal{\pagecanon@canon}{grid}}{%
+    \pagecanon@grid{\pagecanon@leafwidth}{\pagecanon@pageheight}%
+  }{}}}}}%
+  \addtolength{\pagecanon@innermargin}{\pagecanon@gutterlength}%
+}
+
+% ------------------------------------------------------------
+% Setup (called at begin document)
+% ------------------------------------------------------------
+\newcommand{\pagecanon@setup}{%
+  \pagecanon@debug{Beginning document setup}%
+  % Warn if twocolumn
+  \makeatletter
+  \if@twocolumn
+    \PackageWarning{canons}{twocolumn mode detected. Margin notes and canons may behave unexpectedly}%
+  \fi
+  \makeatother
+  %
+  % Check if canon=false (bypass mode)
+  \ifthenelse{\equal{\pagecanon@canon}{false}}{%
+    % Canon disabled; geometry handles everything
+    \pagecanon@debug{Canon disabled; using standard geometry}%
+    \relax
+  }{%
+    % Canon enabled; calculate and apply margins
+    \pagecanon@debug{Applying canon: \pagecanon@canon}%
+    \setlength{\pagecanon@gutterlength}{\pagecanon@gutterval}%
+    \setlength{\pagecanon@pagewidth}{\paperwidth}%
+    \setlength{\pagecanon@pageheight}{\paperheight}%
+    \setlength{\pagecanon@leafwidth}{\pagecanon@pagewidth}%
+    \pagecanon@debug{Paper dimensions: \the\pagecanon@pagewidth{} x \the\pagecanon@pageheight}%
+    %
+    % Apply the selected canon
+    \ifthenelse{\equal{\pagecanon@canon}{vdg}}{%
+      \pagecanon@vdg{\pagecanon@leafwidth}{\pagecanon@pageheight}%
+    }{%
+    \ifthenelse{\equal{\pagecanon@canon}{vdh}}{%
+      \pagecanon@vdh{\pagecanon@leafwidth}{\pagecanon@pageheight}{\pagecanon@vdhN}%
+    }{%
+    \ifthenelse{\equal{\pagecanon@canon}{tufte}}{%
+      \pagecanon@tufte{\pagecanon@leafwidth}{\pagecanon@pageheight}%
+    }{%
+    \ifthenelse{\equal{\pagecanon@canon}{ateliers}}{%
+      \pagecanon@ateliers{\pagecanon@leafwidth}{\pagecanon@pageheight}{\pagecanon@ateliersstyle}%
+    }{%
+    \ifthenelse{\equal{\pagecanon@canon}{grid}}{%
+      \pagecanon@grid{\pagecanon@leafwidth}{\pagecanon@pageheight}%
+    }{%
+      % Default to vdg if unrecognized canon
+      \PackageWarning{canons}{Unknown canon '\pagecanon@canon', using vdg}%
+      \pagecanon@vdg{\pagecanon@leafwidth}{\pagecanon@pageheight}%
+    }}}}}%
+    %
+    % Apply gutter if specified
+    \ifdim\pagecanon@gutterlength>0pt
+      \ifthenelse{\equal{\pagecanon@guttermode}{geometry}}{%
+        \pagecanon@applyguttergeometry
+      }{%
+      \ifthenelse{\equal{\pagecanon@guttermode}{satzspiegel}}{%
+        \pagecanon@applyguttersatzspiegel
+      }{}}%
+    \fi
+    %
+    % Calculate text dimensions
+    \setlength{\pagecanon@textwidth}{\pagecanon@pagewidth}%
+    \addtolength{\pagecanon@textwidth}{-\pagecanon@innermargin}%
+    \addtolength{\pagecanon@textwidth}{-\pagecanon@outermargin}%
+    \setlength{\pagecanon@textheight}{\pagecanon@pageheight}%
+    \addtolength{\pagecanon@textheight}{-\pagecanon@topmargin}%
+    \addtolength{\pagecanon@textheight}{-\pagecanon@bottommargin}%
+    \pagecanon@debug{Calculated text area: \the\pagecanon@textwidth{} x \the\pagecanon@textheight}%
+    %
+    % Non-grid guard: ensure marginparwidth + 2*marginparsep <= outer
+    \ifthenelse{\equal{\pagecanon@canon}{grid}}{}{%
+      \setlength{\pagecanon@tmpdima}{\pagecanon@marginparwidth}%
+      \addtolength{\pagecanon@tmpdima}{\pagecanon@marginparsep}%
+      \addtolength{\pagecanon@tmpdima}{\pagecanon@marginparsep}%
+      \ifdim\pagecanon@tmpdima>\pagecanon@outermargin
+        \PackageWarning{canons}{marginparwidth + 2*marginparsep exceeds outer margin. Shrinking marginparwidth to fit}%
+        \setlength{\pagecanon@marginparwidth}{\pagecanon@outermargin}%
+        \addtolength{\pagecanon@marginparwidth}{-\pagecanon@marginparsep}%
+        \addtolength{\pagecanon@marginparwidth}{-\pagecanon@marginparsep}%
+        \ifdim\pagecanon@marginparwidth<10pt
+          \setlength{\pagecanon@marginparwidth}{10pt}%
+          \PackageWarning{canons}{Outer margin very small; clamped marginparwidth to 10pt}%
+        \fi
+      \fi
+    }%
+    %
+    % Apply calculated margins to geometry based on margins mode
+    \pagecanon@debug{Applying margin mode: \pagecanon@margins}%
+    \ifthenelse{\equal{\pagecanon@margins}{symmetric}}{%
+      % SYMMETRIC: Standard two-sided layout
+      \newgeometry{%
+        inner=\pagecanon@innermargin,
+        outer=\pagecanon@outermargin,
+        top=\pagecanon@topmargin,
+        bottom=\pagecanon@bottommargin,
+        footskip=\pagecanon@footskip,
+        marginparsep=\pagecanon@marginparsep,
+        marginparwidth=\pagecanon@marginparwidth
+      }%
+    }{%
+    \ifthenelse{\equal{\pagecanon@margins}{antisymmetric}}{%
+      % ANTISYMMETRIC: Swap inner/outer margins
+      \newgeometry{%
+        inner=\pagecanon@outermargin,
+        outer=\pagecanon@innermargin,
+        top=\pagecanon@topmargin,
+        bottom=\pagecanon@bottommargin,
+        footskip=\pagecanon@footskip,
+        marginparsep=\pagecanon@marginparsep,
+        marginparwidth=\pagecanon@marginparwidth,
+        reversemarginpar
+      }%
+    }{%
+    \ifthenelse{\equal{\pagecanon@margins}{right}}{%
+      % RIGHT: Single-sided with margin on right
+      \newgeometry{%
+        left=\pagecanon@innermargin,
+        right=\pagecanon@outermargin,
+        top=\pagecanon@topmargin,
+        bottom=\pagecanon@bottommargin,
+        footskip=\pagecanon@footskip,
+        marginparsep=\pagecanon@marginparsep,
+        marginparwidth=\pagecanon@marginparwidth,
+        asymmetric
+      }%
+    }{%
+    \ifthenelse{\equal{\pagecanon@margins}{left}}{%
+      % LEFT: Single-sided with margin on left
+      \newgeometry{%
+        left=\pagecanon@outermargin,
+        right=\pagecanon@innermargin,
+        top=\pagecanon@topmargin,
+        bottom=\pagecanon@bottommargin,
+        footskip=\pagecanon@footskip,
+        marginparsep=\pagecanon@marginparsep,
+        marginparwidth=\pagecanon@marginparwidth,
+        asymmetric
+      }%
+    }{}}}%
+    }%
+  }%
+  %
+  % Calculate common dimensions for downstream packages
+  \setlength{\marginandtext}{\dimexpr\textwidth+\marginparwidth+\marginparsep\relax}
+  \setlength{\marginandsep}{\dimexpr\marginparwidth+\marginparsep\relax}
+  \setlength{\overflowingheadlen}{\textwidth}
+  \addtolength{\overflowingheadlen}{\marginparsep}
+  \addtolength{\overflowingheadlen}{\marginparwidth}
+  \setlength{\fullwidthoverhang}{\dimexpr\marginparwidth+\marginparsep\relax}
+  \pagecanon@debug{Downstream dimensions calculated: marginandtext=\the\marginandtext}%
+  \pagecanon@debug{Setup complete}%
+}
+
+\AtBeginDocument{\pagecanon@setup}
+
+% ------------------------------------------------------------
+% Export margin mode for use by extension packages
+% ------------------------------------------------------------
+\newcommand{\pagecanonmargins}{\pagecanon@margins}
+
+% ------------------------------------------------------------
+% Info command with comprehensive table output
+% ------------------------------------------------------------
+\newcommand{\pagecanoninfo}{%
+  \par\noindent
+  \ifthenelse{\equal{\pagecanon@canon}{false}}{%
+    \fbox{\parbox{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}{%
+      \textbf{Page Canon Settings}\\[0.5\baselineskip]
+      Canon: \textbf{disabled} (using standard geometry)\\
+      Page: \the\paperwidth{} $\times$ \the\paperheight\\
+      Text: \the\textwidth{} $\times$ \the\textheight\\
+      Margin mode: \pagecanon@margins\\
+      (All margins controlled by geometry package)
+    }}%
+  }{%
+    % Determine which canon table to show
+    \ifthenelse{\equal{\pagecanon@canon}{vdg}}{%
+      \fbox{\parbox{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}{%
+        \textbf{Van de Graaf Canon}\\[0.5\baselineskip]
+        \begin{tabular}{|l|c|c|c|}
+          \hline
+          \textbf{Dimension} & \textbf{Factor} & \textbf{Value} & \textbf{Fraction} \\
+          \hline
+          Inner margin & $W/9$ & \the\pagecanon@innermargin & 1/9 \\
+          Outer margin & $2W/9$ & \the\pagecanon@outermargin & 2/9 \\
+          Top margin & $H/9$ & \the\pagecanon@topmargin & 1/9 \\
+          Bottom margin & $2H/9$ & \the\pagecanon@bottommargin & 2/9 \\
+          Text width & $6W/9$ & \the\textwidth & 2/3 \\
+          Text height & $6H/9$ & \the\textheight & 2/3 \\
+          Marginpar width & $8W/45$ & \the\marginparwidth & 8/45 \\
+          Marginpar sep & $W/45$ & \the\marginparsep & 1/45 \\
+          \hline
+        \end{tabular}\\[0.5\baselineskip]
+        Page: \the\paperwidth{} (W) $\times$ \the\paperheight{} (H)\\
+        Margin mode: \textbf{\pagecanon@margins}\\
+        Gutter: \the\pagecanon@gutterlength{} (\pagecanon@guttermode{} mode)\\
+        Footskip: \the\pagecanon@footskip\\
+        Margin+text: \the\marginandtext\\
+        Margin+sep: \the\marginandsep\\
+        Fullwidth overhang: \the\fullwidthoverhang
+      }}%
+    }{%
+    \ifthenelse{\equal{\pagecanon@canon}{vdh}}{%
+      \fbox{\parbox{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}{%
+        \textbf{Villard de Honnecourt Canon (N=\pagecanon@vdhN)}\\[0.5\baselineskip]
+        \begin{tabular}{|l|c|c|c|}
+          \hline
+          \textbf{Dimension} & \textbf{Factor} & \textbf{Value} & \textbf{Based on} \\
+          \hline
+          \ifthenelse{\equal{\pagecanon@vdhN}{3}}{%
+            Inner margin & $W/6$ & \the\pagecanon@innermargin & 1/6 \\
+            Outer margin & $W/3$ & \the\pagecanon@outermargin & 1/3 \\
+            Top margin & $W/4$ & \the\pagecanon@topmargin & 1/4 width \\
+            Bottom margin & $W/2$ & \the\pagecanon@bottommargin & 1/2 width \\
+          }{%
+          \ifthenelse{\equal{\pagecanon@vdhN}{6}}{%
+            Inner margin & $W/9$ & \the\pagecanon@innermargin & 1/9 \\
+            Outer margin & $2W/9$ & \the\pagecanon@outermargin & 2/9 \\
+            Top margin & $W/6$ & \the\pagecanon@topmargin & 1/6 width \\
+            Bottom margin & $W/3$ & \the\pagecanon@bottommargin & 1/3 width \\
+          }{%
+          \ifthenelse{\equal{\pagecanon@vdhN}{9}}{%
+            Inner margin & $W/12$ & \the\pagecanon@innermargin & 1/12 \\
+            Outer margin & $W/6$ & \the\pagecanon@outermargin & 1/6 \\
+            Top margin & $W/8$ & \the\pagecanon@topmargin & 1/8 width \\
+            Bottom margin & $W/4$ & \the\pagecanon@bottommargin & 1/4 width \\
+          }{%
+          \ifthenelse{\equal{\pagecanon@vdhN}{12}}{%
+            Inner margin & $W/15$ & \the\pagecanon@innermargin & 1/15 \\
+            Outer margin & $2W/15$ & \the\pagecanon@outermargin & 2/15 \\
+            Top margin & $W/10$ & \the\pagecanon@topmargin & 1/10 width \\
+            Bottom margin & $W/5$ & \the\pagecanon@bottommargin & 1/5 width \\
+          }{%
+          \ifthenelse{\equal{\pagecanon@vdhN}{15}}{%
+            Inner margin & $W/18$ & \the\pagecanon@innermargin & 1/18 \\
+            Outer margin & $W/9$ & \the\pagecanon@outermargin & 1/9 \\
+            Top margin & $W/12$ & \the\pagecanon@topmargin & 1/12 width \\
+            Bottom margin & $W/6$ & \the\pagecanon@bottommargin & 1/6 width \\
+          }{%
+            Inner margin & $W/9$ & \the\pagecanon@innermargin & 1/9 \\
+            Outer margin & $2W/9$ & \the\pagecanon@outermargin & 2/9 \\
+            Top margin & $W/6$ & \the\pagecanon@topmargin & 1/6 width \\
+            Bottom margin & $W/3$ & \the\pagecanon@bottommargin & 1/3 width \\
+          }}}}}%
+          Text width & --- & \the\textwidth & calculated \\
+          Text height & --- & \the\textheight & calculated \\
+          Marginpar width & varies & \the\marginparwidth & N-dependent \\
+          Marginpar sep & varies & \the\marginparsep & N-dependent \\
+          \hline
+        \end{tabular}\\[0.5\baselineskip]
+        Page: \the\paperwidth{} (W) $\times$ \the\paperheight{} (H)\\
+        Margin mode: \textbf{\pagecanon@margins}\\
+        Gutter: \the\pagecanon@gutterlength{} (\pagecanon@guttermode{} mode)\\
+        Footskip: \the\pagecanon@footskip\\
+        Margin+text: \the\marginandtext\\
+        Margin+sep: \the\marginandsep\\
+        Fullwidth overhang: \the\fullwidthoverhang
+      }}%
+    }{%
+    \ifthenelse{\equal{\pagecanon@canon}{tufte}}{%
+      \fbox{\parbox{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}{%
+        \textbf{Tufte Canon}\\[0.5\baselineskip]
+        \begin{tabular}{|l|c|c|c|}
+          \hline
+          \textbf{Dimension} & \textbf{Factor} & \textbf{Value} & \textbf{Approx} \\
+          \hline
+          Inner margin & $W/8.5$ & \the\pagecanon@innermargin & $\approx$1/8.5 \\
+          Outer margin & $3W/8$ & \the\pagecanon@outermargin & $\approx$3/8 \\
+          Top margin & $H/11$ & \the\pagecanon@topmargin & 1/11 \\
+          Bottom margin & $3H/22$ & \the\pagecanon@bottommargin & 3/22 \\
+          Text width & --- & \the\textwidth & calculated \\
+          Text height & --- & \the\textheight & calculated \\
+          Marginpar width & $4W/17$ & \the\marginparwidth & $\approx$4/17 \\
+          Marginpar sep & $W/26$ & \the\marginparsep & $\approx$1/26 \\
+          \hline
+        \end{tabular}\\[0.5\baselineskip]
+        Page: \the\paperwidth{} (W) $\times$ \the\paperheight{} (H)\\
+        Margin mode: \textbf{\pagecanon@margins}\\
+        Gutter: \the\pagecanon@gutterlength{} (\pagecanon@guttermode{} mode)\\
+        Footskip: \the\pagecanon@footskip\\
+        Margin+text: \the\marginandtext\\
+        Margin+sep: \the\marginandsep\\
+        Fullwidth overhang: \the\fullwidthoverhang
+      }}%
+    }{%
+    \ifthenelse{\equal{\pagecanon@canon}{ateliers}}{%
+      \fbox{\parbox{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}{%
+        \textbf{Canon des Ateliers (\pagecanon@ateliersstyle)}\\[0.5\baselineskip]
+        \begin{tabular}{|l|c|c|c|}
+          \hline
+          \textbf{Dimension} & \textbf{Factor} & \textbf{Value} & \textbf{Fraction} \\
+          \hline
+          \ifthenelse{\equal{\pagecanon@ateliersstyle}{ordinary}}{%
+            Inner margin & $W/10$ & \the\pagecanon@innermargin & 1/10 \\
+            Outer margin & $3W/20$ & \the\pagecanon@outermargin & 3/20 \\
+            Top margin & $W/8$ & \the\pagecanon@topmargin & 1/8 width \\
+            Bottom margin & $7W/40$ & \the\pagecanon@bottommargin & 7/40 width \\
+          }{%
+          \ifthenelse{\equal{\pagecanon@ateliersstyle}{neater}}{%
+            Inner margin & $2W/15$ & \the\pagecanon@innermargin & 2/15 \\
+            Outer margin & $W/5$ & \the\pagecanon@outermargin & 1/5 \\
+            Top margin & $W/6$ & \the\pagecanon@topmargin & 1/6 width \\
+            Bottom margin & $7W/30$ & \the\pagecanon@bottommargin & 7/30 width \\
+          }{%
+          \ifthenelse{\equal{\pagecanon@ateliersstyle}{luxury}}{%
+            Inner margin & $3W/20$ & \the\pagecanon@innermargin & 3/20 \\
+            Outer margin & $9W/40$ & \the\pagecanon@outermargin & 9/40 \\
+            Top margin & $3W/16$ & \the\pagecanon@topmargin & 3/16 width \\
+            Bottom margin & $21W/80$ & \the\pagecanon@bottommargin & 21/80 width \\
+          }{%
+            Inner margin & $W/10$ & \the\pagecanon@innermargin & 1/10 \\
+            Outer margin & $3W/20$ & \the\pagecanon@outermargin & 3/20 \\
+            Top margin & $W/8$ & \the\pagecanon@topmargin & 1/8 width \\
+            Bottom margin & $7W/40$ & \the\pagecanon@bottommargin & 7/40 width \\
+          }}}%
+          Text width & --- & \the\textwidth & calculated \\
+          Text height & --- & \the\textheight & calculated \\
+          Marginpar width & varies & \the\marginparwidth & style-dependent \\
+          Marginpar sep & varies & \the\marginparsep & style-dependent \\
+          \hline
+        \end{tabular}\\[0.5\baselineskip]
+        Page: \the\paperwidth{} (W) $\times$ \the\paperheight{} (H)\\
+        Margin mode: \textbf{\pagecanon@margins}\\
+        Gutter: \the\pagecanon@gutterlength{} (\pagecanon@guttermode{} mode)\\
+        Footskip: \the\pagecanon@footskip\\
+        Margin+text: \the\marginandtext\\
+        Margin+sep: \the\marginandsep\\
+        Fullwidth overhang: \the\fullwidthoverhang
+      }}%
+    }{%
+    \ifthenelse{\equal{\pagecanon@canon}{grid}}{%
+      \fbox{\parbox{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}{%
+        \textbf{Grid Canon (N=\pagecanon@gridN)}\\[0.5\baselineskip]
+        \begin{tabular}{|l|c|c|c|}
+          \hline
+          \textbf{Dimension} & \textbf{Grid Cells} & \textbf{Value} & \textbf{Cell Size} \\
+          \hline
+          Inner margin & \pagecanon@gridinner & \the\pagecanon@innermargin & \the\dimexpr\pagecanon@innermargin/\pagecanon@gridinner\relax \\
+          Outer margin & \pagecanon@gridouter & \the\pagecanon@outermargin & \the\dimexpr\pagecanon@outermargin/\pagecanon@gridouter\relax \\
+          Top margin & \pagecanon@gridtop & \the\pagecanon@topmargin & \the\dimexpr\pagecanon@topmargin/\pagecanon@gridtop\relax \\
+          Bottom margin & \pagecanon@gridbottom & \the\pagecanon@bottommargin & \the\dimexpr\pagecanon@bottommargin/\pagecanon@gridbottom\relax \\
+          \hline
+          Text width & \number\numexpr\pagecanon@gridN-\pagecanon@gridinner-\pagecanon@gridouter\relax & \the\textwidth & --- \\
+          Text height & \number\numexpr\pagecanon@gridN-\pagecanon@gridtop-\pagecanon@gridbottom\relax & \the\textheight & --- \\
+          \hline
+          Marginpar width & --- & \the\marginparwidth & Heuristic \\
+          Marginpar sep & --- & \the\marginparsep & Cell/6 \\
+          \hline
+        \end{tabular}\\[0.5\baselineskip]
+        Grid: \pagecanon@gridN{} $\times$ \pagecanon@gridN{} cells\\
+        Page: \the\paperwidth{} (W) $\times$ \the\paperheight{} (H)\\
+        Cell: \the\dimexpr\paperwidth/\pagecanon@gridN\relax{} $\times$ \the\dimexpr\paperheight/\pagecanon@gridN\relax\\
+        Margin mode: \textbf{\pagecanon@margins}\\
+        Gutter: \the\pagecanon@gutterlength{} (\pagecanon@guttermode{} mode)\\
+        Footskip: \the\pagecanon@footskip\\
+        Margin+text: \the\marginandtext\\
+        Margin+sep: \the\marginandsep\\
+        Fullwidth overhang: \the\fullwidthoverhang
+      }}%
+    }{%
+      % Fallback for unknown canon
+      \fbox{\parbox{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}{%
+        \textbf{Page Canon Settings}\\[0.5\baselineskip]
+        Canon: \pagecanon@canon{} (unknown)\\
+        Page: \the\paperwidth{} $\times$ \the\paperheight\\
+        Text: \the\textwidth{} $\times$ \the\textheight\\
+        Margin mode: \pagecanon@margins
+      }}%
+    }}}}}}%
+  \par\bigskip
+}
+
+\endinput

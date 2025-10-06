@@ -1,0 +1,705 @@
+%% =============================================================================
+%% canons-margins.sty
+%% =============================================================================
+%% Margin note and sidenote functionality for canons.sty (or standalone)
+%% =============================================================================
+%% Version:     1.2.0
+%% Date:        2025/10/05
+%% Author:      Daniel Quigley
+%% Contact:     dquigleydev@gmail.com
+%% License:     LaTeX Project Public License 1.3c
+%% =============================================================================
+%%
+%% DESCRIPTION
+%% -----------
+%% Provides margin note and sidenote functionality that integrates with
+%% the canons package. Can also work standalone with default LaTeX behavior.
+%% All margin notes and sidenotes use footnotesize by default (configurable).
+%%
+%% Numbering policy for sidenotes is configurable:
+%%   - global       : a single counter across the document (default)
+%%   - persection   : counter resets at each \section
+%%   - perchapter   : counter resets at each \chapter (ignored if class lacks chapters)
+%%   - perpage      : counter resets on each page (via the 'perpage' package)
+%%
+%% If the 'sidenotes' package is loaded, this package integrates with it.
+%% Otherwise, it provides its own sidenote implementation using 'marginnote'.
+%%
+%% USAGE
+%% -----
+%% \usepackage{canons}                    % Optional: load page canon system first
+%% \usepackage{sidenotes}                 % Optional: use native sidenotes API
+%% \usepackage[numbering=<scheme>,        % Optional: global|persection|perchapter|perpage
+%%             marginsize=true,           % Control sizes together (or false to split)
+%%             size=footnotesize,         % Unified size when marginsize=true
+%%             margincolor=true,          % Control colors together (or false to split)
+%%             color=,                    % Unified color (empty = document text color)
+%%             marginjustify=true,        % Control justification together (or false to split)
+%%             justify=default]           % Unified justification when marginjustify=true
+%%   {canons-margins}
+%%
+%% OPTIONS
+%% -------
+%% marginsize=true|false       : Control sizes together (true) or separately (false) [default: true]
+%% size=<size>                 : Font size when marginsize=true [default: footnotesize]
+%% marginnotesize=<size>       : Marginnote size when marginsize=false [default: footnotesize]
+%% sidenotesize=<size>         : Sidenote size when marginsize=false [default: footnotesize]
+%%
+%% margincolor=true|false      : Control colors together (true) or separately (false) [default: true]
+%% color=<color>               : Color when margincolor=true [default: document text color]
+%% marginnotecolor=<color>     : Marginnote color when margincolor=false [default: document text color]
+%% sidenotecolor=<color>       : Sidenote color when margincolor=false [default: document text color]
+%%
+%% marginjustify=true|false    : Control justification together (true) or separately (false) [default: true]
+%% justify=<justify>           : Justification when marginjustify=true [default: default]
+%% marginnotejustify=<justify> : Marginnote justification when marginjustify=false [default: default]
+%% sidenotejustify=<justify>   : Sidenote justification when marginjustify=false [default: default]
+%% Available justifications: default, flushleft, flushright, centered, justified
+%%
+%% numbering=<scheme>          : Sidenote counter policy [default: global]
+%%   • global       — single counter across the document
+%%   • persection   — resets at each \section (uses \@addtoreset)
+%%   • perchapter   — resets at each \chapter (uses \@addtoreset; no-op if class has no chapters)
+%%   • perpage      — resets each page (loads 'perpage' and calls \MakePerPage{sidenote})
+%%
+%% COMMANDS
+%% --------
+%% \marginnote{text}[voffset]  : Margin notes (via marginnote)
+%% \sidenote[<num>]{text}      : Numbered sidenotes (\refstepcounter used if <num> absent)
+%% \sidenotemark[<num>]        : In-text mark for sidenote (uses current or given number)
+%% \sidenotetext[<num>]{text}  : Margin text for the current or given sidenote number
+%%
+%% \canonsmarginclear          : Clear margin area on the current line
+%% \canonsswitchmargin         : Toggle margin side temporarily
+%% \canonsresetmargin          : Reset to default margin side (honors canons' margins mode)
+%% \canonsmarginfont           : Font hook applied to margin/sidenotes (user \renewcommand)
+%%
+%% NUMBERING & RESETS — NOTES
+%% --------------------------
+%% • 'persection' and 'perchapter' use kernel \@addtoreset for predictable scoping.
+%% • 'perpage' resets at shipout via the 'perpage' package; anchors/labels behave like footnotes.
+%% • When the 'sidenotes' package is present, the 'sidenote' counter is reused and the policy
+%%   is applied to that counter; otherwise a local 'sidenote' counter is provided.
+%% • \sidenotetext without an explicit [<num>] uses the current value of the sidenote counter.
+%%   Place it logically adjacent to its corresponding mark to avoid reusing a stale number.
+%%
+%% JUSTIFICATION BEHAVIOR
+%% ----------------------
+%% Single-sided (margins=right/left): Justification respects the right/left margin by default
+%%   (flushleft on right, flushright on left), unless overridden by options.
+%% Two-sided (margins=symmetric/antisymmetric): When justification is 'default', behavior adapts
+%%   to placement side; explicit choices apply uniformly.
+%%
+%% DEPENDENCIES
+%% ------------
+%% Required: marginnote, marginfix, ifthen, etoolbox, xparse, kvoptions, xcolor
+%% Optional: sidenotes (integrates if present), perpage (auto-loaded only when numbering=perpage)
+%% =============================================================================
+
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{canons-margins}[2025/10/05 v1.2.0 Margin/sidenote helpers integrated with canons]
+
+% Required packages
+\RequirePackage{kvoptions}
+\RequirePackage{marginnote}
+\RequirePackage{marginfix}
+\RequirePackage{ifthen}
+\RequirePackage{perpage}
+\RequirePackage{etoolbox}
+\RequirePackage{xparse}
+\RequirePackage{xcolor}
+
+\makeatletter
+
+% ----------------------------------------------------------------------
+% Package Options
+% ----------------------------------------------------------------------
+\SetupKeyvalOptions{
+  family=CM,
+  prefix=CM@
+}
+
+% Boolean option for controlling sizes together or separately
+\DeclareBoolOption[true]{marginsize}
+
+% Size options with default value footnotesize
+\DeclareStringOption[footnotesize]{size}
+\DeclareStringOption[footnotesize]{marginnotesize}
+\DeclareStringOption[footnotesize]{sidenotesize}
+
+% Boolean option for controlling colors together or separately
+\DeclareBoolOption[true]{margincolor}
+
+% Color options with default value empty (meaning use document text color)
+\DeclareStringOption[]{color}
+\DeclareStringOption[]{marginnotecolor}
+\DeclareStringOption[]{sidenotecolor}
+
+% Boolean option for controlling justification together or separately
+\DeclareBoolOption[true]{marginjustify}
+
+% Justification options with default value 'default'
+\DeclareStringOption[default]{justify}
+\DeclareStringOption[default]{marginnotejustify}
+\DeclareStringOption[default]{sidenotejustify}
+
+\DeclareStringOption[global]{numbering} % global|persection|perchapter|perpage
+
+\ProcessKeyvalOptions*
+
+% ----------------------------------------------------------------------
+% Font command setup based on options
+% ----------------------------------------------------------------------
+
+% Helper macro to set font based on size option
+\newcommand{\CM@setfontsize}[2]{%
+  % #1 = command to set, #2 = size option value
+  \ifthenelse{\equal{#2}{tiny}}{\renewcommand*{#1}{\tiny}}{%
+  \ifthenelse{\equal{#2}{scriptsize}}{\renewcommand*{#1}{\scriptsize}}{%
+  \ifthenelse{\equal{#2}{footnotesize}}{\renewcommand*{#1}{\footnotesize}}{%
+  \ifthenelse{\equal{#2}{small}}{\renewcommand*{#1}{\small}}{%
+  \ifthenelse{\equal{#2}{normalsize}}{\renewcommand*{#1}{\normalsize}}{%
+  \ifthenelse{\equal{#2}{large}}{\renewcommand*{#1}{\large}}{%
+  \ifthenelse{\equal{#2}{Large}}{\renewcommand*{#1}{\Large}}{%
+  \ifthenelse{\equal{#2}{LARGE}}{\renewcommand*{#1}{\LARGE}}{%
+  \ifthenelse{\equal{#2}{huge}}{\renewcommand*{#1}{\huge}}{%
+  \ifthenelse{\equal{#2}{Huge}}{\renewcommand*{#1}{\Huge}}{%
+    \PackageWarning{canons-margins}{Unknown size option '#2', using footnotesize}%
+    \renewcommand*{#1}{\footnotesize}%
+  }}}}}}}}}}%
+}
+
+% Central font hooks - defaults to footnotesize (user may still \renewcommand)
+\newcommand*\canonsmarginfont{\footnotesize}
+\newcommand*\canonsmarginnotefont{\footnotesize}  % Specific to marginnotes
+\newcommand*\canonssidenotefont{\footnotesize}     % Specific to sidenotes
+
+% Set fonts based on options
+\ifCM@marginsize
+  % marginsize=true: control both with single size option
+  \CM@setfontsize{\canonsmarginfont}{\CM@size}
+  \CM@setfontsize{\canonsmarginnotefont}{\CM@size}
+  \CM@setfontsize{\canonssidenotefont}{\CM@size}
+\else
+  % marginsize=false: control separately
+  \CM@setfontsize{\canonsmarginnotefont}{\CM@marginnotesize}
+  \CM@setfontsize{\canonssidenotefont}{\CM@sidenotesize}
+  % Set canonsmarginfont to marginnotesize as default
+  \CM@setfontsize{\canonsmarginfont}{\CM@marginnotesize}
+\fi
+
+% ----------------------------------------------------------------------
+% Color command setup based on options
+% ----------------------------------------------------------------------
+
+% Helper macro to set color based on option
+\newcommand{\CM@setcolor}[2]{%
+  % #1 = command to set, #2 = color option value
+  \ifthenelse{\equal{#2}{}}{%
+    % Empty means use document text color (no color command)
+    \renewcommand*{#1}{}%
+  }{%
+    % User specified a color
+    \renewcommand*{#1}{\color{#2}}%
+  }%
+}
+
+% Central color hooks - defaults to empty (uses document text color)
+\newcommand*\canonsmargincolor{}
+\newcommand*\canonsmarginnotcolor{}  % Specific to marginnotes
+\newcommand*\canonssidenotcolor{}     % Specific to sidenotes
+
+% Set colors based on options
+\ifCM@margincolor
+  % margincolor=true: control both with single color option
+  \CM@setcolor{\canonsmargincolor}{\CM@color}
+  \CM@setcolor{\canonsmarginnotcolor}{\CM@color}
+  \CM@setcolor{\canonssidenotcolor}{\CM@color}
+\else
+  % margincolor=false: control separately
+  \CM@setcolor{\canonsmarginnotcolor}{\CM@marginnotecolor}
+  \CM@setcolor{\canonssidenotcolor}{\CM@sidenotecolor}
+  % Set canonsmargincolor to marginnotecolor as default
+  \CM@setcolor{\canonsmargincolor}{\CM@marginnotecolor}
+\fi
+
+% ----------------------------------------------------------------------
+% Justification command setup based on options
+% ----------------------------------------------------------------------
+
+% Helper macro to set justification based on option
+\newcommand{\CM@setjustify}[2]{%
+  % #1 = command to set, #2 = justification option value
+  \ifthenelse{\equal{#2}{flushleft}}{\renewcommand*{#1}{\raggedright}}{%
+  \ifthenelse{\equal{#2}{flushright}}{\renewcommand*{#1}{\raggedleft}}{%
+  \ifthenelse{\equal{#2}{centered}}{\renewcommand*{#1}{\centering}}{%
+  \ifthenelse{\equal{#2}{justified}}{\renewcommand*{#1}{\relax}}{%
+  \ifthenelse{\equal{#2}{default}}{}{%  % Do nothing for default - will be set later
+    \PackageWarning{canons-margins}{Unknown justification option '#2', using default}%
+  }}}}}%
+}
+
+% Initialize justification commands with temporary defaults
+\newcommand*\canonsmarginnotejustify{\raggedright}
+\newcommand*\canonssidenotejustify{\raggedright}
+
+% Dynamic justification wrapper for two-sided modes
+% This allows us to change behavior on the fly
+\newif\ifCM@sidenotemode
+\CM@sidenotemodefalse
+
+% Right margin justification (simpler logic)
+\newcommand*\CM@rightmargin@just{%
+  \ifCM@sidenotemode
+    % Check if sidenotes should use smart default
+    \ifCM@marginjustify
+      \ifthenelse{\equal{\CM@justify}{default}}{%
+        \raggedright  % Smart default for right margin
+      }{%
+        \canonssidenotejustify  % User's unified choice
+      }%
+    \else
+      \ifthenelse{\equal{\CM@sidenotejustify}{default}}{%
+        \raggedright  % Smart default for right margin
+      }{%
+        \canonssidenotejustify  % User's independent choice
+      }%
+    \fi
+  \else
+    % Marginnotes
+    \ifCM@marginjustify
+      \ifthenelse{\equal{\CM@justify}{default}}{%
+        \raggedright  % Smart default for right margin
+      }{%
+        \canonsmarginnotejustify  % User's unified choice
+      }%
+    \else
+      \ifthenelse{\equal{\CM@marginnotejustify}{default}}{%
+        \raggedright  % Smart default for right margin
+      }{%
+        \canonsmarginnotejustify  % User's independent choice
+      }%
+    \fi
+  \fi
+}
+
+% Left margin justification (simpler logic)
+\newcommand*\CM@leftmargin@just{%
+  \ifCM@sidenotemode
+    % Check if sidenotes should use smart default
+    \ifCM@marginjustify
+      \ifthenelse{\equal{\CM@justify}{default}}{%
+        \raggedleft  % Smart default for left margin
+      }{%
+        \canonssidenotejustify  % User's unified choice
+      }%
+    \else
+      \ifthenelse{\equal{\CM@sidenotejustify}{default}}{%
+        \raggedleft  % Smart default for left margin
+      }{%
+        \canonssidenotejustify  % User's independent choice
+      }%
+    \fi
+  \else
+    % Marginnotes
+    \ifCM@marginjustify
+      \ifthenelse{\equal{\CM@justify}{default}}{%
+        \raggedleft  % Smart default for left margin
+      }{%
+        \canonsmarginnotejustify  % User's unified choice
+      }%
+    \else
+      \ifthenelse{\equal{\CM@marginnotejustify}{default}}{%
+        \raggedleft  % Smart default for left margin
+      }{%
+        \canonsmarginnotejustify  % User's independent choice
+      }%
+    \fi
+  \fi
+}
+
+% ----------------------------------------------------------------------
+% Common settings
+% ----------------------------------------------------------------------
+\setlength{\marginparpush}{\baselineskip}
+
+% ----------------------------------------------------------------------
+% Set marginnote's \marginfont to use our font command
+% ----------------------------------------------------------------------
+\AtBeginDocument{%
+  % Force marginnote package to use our marginnote-specific font command
+  \ifCM@marginsize
+    \def\marginfont{\canonsmarginfont}%
+  \else
+    \def\marginfont{\canonsmarginnotefont}%
+  \fi
+  
+  % --- SIDENOTES INTEGRATION if package is loaded ---
+  \@ifpackageloaded{sidenotes}{%
+    \PackageInfo{canons-margins}{sidenotes package detected — integrating with it}%
+    
+    % Force sidenotes font to match our setting
+    \ifCM@marginsize
+      \def\sidenotes@font{\canonsmarginfont}%
+    \else
+      \def\sidenotes@font{\canonssidenotefont}%
+    \fi
+    
+    % Patch any hardcoded sizes in sidenotes to use appropriate font
+    \ifCM@marginsize
+      % Use unified font
+      \@ifundefined{sidenotes@place}{}{\patchcmd{\sidenotes@place}{\footnotesize}{\canonsmarginfont}{}{}%
+                                        \patchcmd{\sidenotes@place}{\scriptsize}{\canonsmarginfont}{}{}%
+                                        \patchcmd{\sidenotes@place}{\marginfont}{\canonsmarginfont}{}{}}
+      \@ifundefined{sidenotes@mk@note}{}{\patchcmd{\sidenotes@mk@note}{\footnotesize}{\canonsmarginfont}{}{}%
+                                          \patchcmd{\sidenotes@mk@note}{\scriptsize}{\canonsmarginfont}{}{}%
+                                          \patchcmd{\sidenotes@mk@note}{\marginfont}{\canonsmarginfont}{}{}}
+      \@ifundefined{sidenotetext}{}{\patchcmd{\sidenotetext}{\footnotesize}{\canonsmarginfont}{}{}%
+                                     \patchcmd{\sidenotetext}{\scriptsize}{\canonsmarginfont}{}{}}
+    \else
+      % Use sidenote-specific font
+      \@ifundefined{sidenotes@place}{}{\patchcmd{\sidenotes@place}{\footnotesize}{\canonssidenotefont}{}{}%
+                                        \patchcmd{\sidenotes@place}{\scriptsize}{\canonssidenotefont}{}{}%
+                                        \patchcmd{\sidenotes@place}{\marginfont}{\canonssidenotefont}{}{}}
+      \@ifundefined{sidenotes@mk@note}{}{\patchcmd{\sidenotes@mk@note}{\footnotesize}{\canonssidenotefont}{}{}%
+                                          \patchcmd{\sidenotes@mk@note}{\scriptsize}{\canonssidenotefont}{}{}%
+                                          \patchcmd{\sidenotes@mk@note}{\marginfont}{\canonssidenotefont}{}{}}
+      \@ifundefined{sidenotetext}{}{\patchcmd{\sidenotetext}{\footnotesize}{\canonssidenotefont}{}{}%
+                                     \patchcmd{\sidenotetext}{\scriptsize}{\canonssidenotefont}{}{}}
+    \fi
+
+    % Make placement obey current reverse-margin state by normalizing laps:
+    \providecommand\canons@sn@lap{\rlap}%
+    \renewcommand\canons@sn@lap{\if@reversemargin\llap\else\rlap\fi}%
+    \@ifundefined{sidenotes@place}{}{%
+      \patchcmd{\sidenotes@place}{\rlap}{\canons@sn@lap}{}{}%
+      \patchcmd{\sidenotes@place}{\llap}{\canons@sn@lap}{}{}%
+    }%
+  }{%
+    \PackageInfo{canons-margins}{sidenotes package not loaded — providing own implementation}%
+  }%
+}
+
+% ----------------------------------------------------------------------
+% Determine margin mode (from canons if available)
+% ----------------------------------------------------------------------
+\newcommand*\canons@marginmode{default}
+\@ifpackageloaded{canons}{%
+  \PackageInfo{canons-margins}{canons package detected — integrating margin behavior}%
+  \edef\canons@marginmode{\pagecanonmargins}%
+}{%
+  \PackageInfo{canons-margins}{canons package not detected — using default LaTeX margin behavior}%
+}
+
+% ----------------------------------------------------------------------
+% Set defaults based on margin mode, then apply user options
+% ----------------------------------------------------------------------
+
+% First, set mode-specific defaults for justification
+\ifthenelse{\equal{\canons@marginmode}{right}}{%
+  % Right margin: default is raggedright
+  \PackageInfo{canons-margins}{Margin mode: right - default justification is flushleft}%
+  \renewcommand*\canonsmarginnotejustify{\raggedright}
+  \renewcommand*\canonssidenotejustify{\raggedright}
+}{}
+
+\ifthenelse{\equal{\canons@marginmode}{left}}{%
+  % Left margin: default is raggedleft
+  \PackageInfo{canons-margins}{Margin mode: left - default justification is flushright}%
+  \renewcommand*\canonsmarginnotejustify{\raggedleft}
+  \renewcommand*\canonssidenotejustify{\raggedleft}
+}{}
+
+\ifthenelse{\equal{\canons@marginmode}{symmetric} \OR \equal{\canons@marginmode}{antisymmetric}}{%
+  % Symmetric/antisymmetric: justification determined dynamically based on placement
+  % When using 'default', the actual justification will be set at runtime
+  \PackageInfo{canons-margins}{Margin mode: symmetric/antisymmetric - justification will adapt to placement side}%
+  % Keep initial commands, they'll be overridden dynamically if 'default'
+  \renewcommand*\canonsmarginnotejustify{\raggedright}
+  \renewcommand*\canonssidenotejustify{\raggedright}
+}{}
+
+\ifthenelse{\equal{\canons@marginmode}{default}}{%
+  % Default mode: default is raggedright
+  \PackageInfo{canons-margins}{Margin mode: default - default justification is flushleft}%
+  \renewcommand*\canonsmarginnotejustify{\raggedright}
+  \renewcommand*\canonssidenotejustify{\raggedright}
+}{}
+
+% Now apply user options (overriding defaults if specified)
+\ifCM@marginjustify
+  % marginjustify=true: control both with single justify option
+  \ifthenelse{\equal{\CM@justify}{default}}{%
+    % User wants default - already set above based on mode
+  }{%
+    % User specified something - override both
+    \CM@setjustify{\canonsmarginnotejustify}{\CM@justify}
+    \CM@setjustify{\canonssidenotejustify}{\CM@justify}
+  }
+\else
+  % marginjustify=false: control separately
+  \ifthenelse{\equal{\CM@marginnotejustify}{default}}{%
+    % User wants default for marginnote - already set above
+  }{%
+    % User specified marginnote justification
+    \CM@setjustify{\canonsmarginnotejustify}{\CM@marginnotejustify}
+  }
+  \ifthenelse{\equal{\CM@sidenotejustify}{default}}{%
+    % User wants default for sidenote - already set above
+  }{%
+    % User specified sidenote justification
+    \CM@setjustify{\canonssidenotejustify}{\CM@sidenotejustify}
+  }
+\fi
+
+% ----------------------------------------------------------------------
+% Side-specific overrides for \marginnote in one-sided modes
+% (symmetric/antisymmetric rely on class+geometry+reversemarginpar)
+% ----------------------------------------------------------------------
+
+% RIGHT margin configuration
+\ifthenelse{\equal{\canons@marginmode}{right}}{%
+  \PackageInfo{canons-margins}{Using right margin configuration}%
+  \long\def\@mn@@@marginnote[#1]#2[#3]{%
+    \begingroup
+    \ifmmode\mn@strut\let\@tempa\mn@vadjust\else
+      \if@inlabel\leavevmode\fi
+      \ifhmode\mn@strut\let\@tempa\mn@vadjust\else\let\@tempa\mn@vlap\fi
+    \fi
+    \@tempa{%
+      \vbox to\z@{%
+        \vss
+        \@mn@margintest
+        \if@reversemargin\if@tempswa \@tempswafalse \else \@tempswatrue \fi\fi
+        \rlap{%
+          \ifx\@mn@currxpos\relax
+            \kern\marginnoterightadjust
+          \else\ifx\@mn@currxpos\@empty
+            \kern\marginnoterightadjust
+          \else
+            \begingroup
+              \setlength{\@tempdima}{\@mn@currxpos}%
+              \kern-\@tempdima
+              \if@twoside\ifodd\@mn@currpage\relax \kern\oddsidemargin \else \kern\evensidemargin \fi
+              \else \kern\oddsidemargin \fi
+              \kern 1in
+            \endgroup
+          \fi\fi
+          \kern\marginnotetextwidth\kern\marginparsep
+          \vbox to\z@{\kern\marginnotevadjust\kern #3
+            \vbox to\z@{%
+              \hsize\marginparwidth\linewidth\hsize
+              \kern-\parskip
+              % Use \marginfont, color, and justification command
+              \marginfont \canonsmarginnotcolor \canonsmarginnotejustify \strut\hspace{\z@}%
+              \ignorespaces#2\endgraf
+              \vss}%
+            \vss}%
+        }%
+      }%
+    }%
+    \endgroup
+  }%
+}{}
+
+% LEFT margin configuration
+\ifthenelse{\equal{\canons@marginmode}{left}}{%
+  \PackageInfo{canons-margins}{Using left margin configuration}%
+  \long\def\@mn@@@marginnote[#1]#2[#3]{%
+    \begingroup
+    \ifmmode\mn@strut\let\@tempa\mn@vadjust\else
+      \if@inlabel\leavevmode\fi
+      \ifhmode\mn@strut\let\@tempa\mn@vadjust\else\let\@tempa\mn@vlap\fi
+    \fi
+    \@tempa{%
+      \vbox to\z@{%
+        \vss
+        \@mn@margintest
+        \if@reversemargin\if@tempswa \@tempswafalse \else \@tempswatrue \fi\fi
+        \llap{%
+          \vbox to\z@{\kern\marginnotevadjust\kern #3
+            \vbox to\z@{%
+              \hsize\marginparwidth\linewidth\hsize
+              \kern-\parskip
+              % Use \marginfont, color, and justification command
+              \marginfont \canonsmarginnotcolor \canonsmarginnotejustify \strut\hspace{\z@}%
+              \ignorespaces#2\endgraf
+              \vss}%
+            \vss}%
+          \begingroup
+            \ifx\@mn@currxpos\relax\else\ifx\@mn@currxpos\@empty\else
+              \kern\@mn@currxpos
+            \fi\fi
+            \ifx\@mn@currpage\relax\let\@mn@currpage\@ne\fi
+            \if@twoside\ifodd\@mn@currpage\relax \kern-\oddsidemargin \else \kern-\evensidemargin \fi
+            \else \kern-\oddsidemargin \fi
+            \kern-1in
+          \endgroup
+          \kern\marginparsep
+        }%
+      }%
+    }%
+    \endgroup
+  }%
+}{}
+
+% Symmetric / antisymmetric: no explicit override
+\ifthenelse{\equal{\canons@marginmode}{symmetric} \OR \equal{\canons@marginmode}{antisymmetric}}{%
+  \PackageInfo{canons-margins}{Using symmetric/antisymmetric configuration (no override)}%
+  % WARNING: Justification control not available in two-sided modes
+  % Marginnote package handles placement and justification naturally
+}{}
+
+% ----------------------------------------------------------------------
+% Utilities
+% ----------------------------------------------------------------------
+\newcommand{\canonsmarginclear}{\marginpar{}} % clear margin area
+
+% Toggle margin side temporarily
+\newcommand{\canonsswitchmargin}{%
+  \@ifundefined{@reversemargintrue}{%
+    \reversemarginpar
+  }{%
+    \if@reversemargin \@reversemarginfalse \else \@reversemargintrue \fi
+  }%
+}
+
+% Reset margin side to the package's default
+\newcommand{\canonsresetmargin}{%
+  \@ifundefined{@reversemargintrue}{%
+    \normalmarginpar
+  }{%
+    \@ifpackageloaded{canons}{%
+      \edef\@canonsmode{\pagecanonmargins}%
+      \ifthenelse{\equal{\@canonsmode}{antisymmetric}}{%
+        \@reversemargintrue
+      }{%
+        \@reversemarginfalse
+      }%
+    }{%
+      \@reversemarginfalse
+    }%
+  }%
+}
+
+% ----------------------------------------------------------------------
+% Sidenote implementation
+% Provide our own if sidenotes package is NOT loaded
+% If sidenotes IS loaded, it provides these commands and we patch them
+% ----------------------------------------------------------------------
+
+% Only provide our implementation if sidenotes package is NOT loaded
+\@ifpackageloaded{sidenotes}{%
+  % sidenotes package provides the commands - we just patch them above
+}{%
+  % sidenotes NOT loaded - provide our own implementation using marginnote
+  
+  % Create counter if it doesn't exist
+  \newcounter{sidenote}
+  \setcounter{sidenote}{0}
+  
+  % Mark formatting hook (user may \renewcommand)
+  \newcommand*\canons@sidenotemarkformat[1]{\textsuperscript{#1}}
+  % In-margin label formatting hook (user may \renewcommand)  
+  \newcommand*\canons@sidenotelabelformat[1]{\textsuperscript{#1}\,}
+  
+  % Font command for sidenotes
+  \ifCM@marginsize
+    % Use unified font
+    \newcommand*\canons@sidenotefont{\canonsmarginfont}
+  \else
+    % Use sidenote-specific font
+    \newcommand*\canons@sidenotefont{\canonssidenotefont}
+  \fi
+  
+  % \sidenotemark[<num>]
+  % Steps the counter only if <num> not provided.
+  \ProvideDocumentCommand{\sidenotemark}{ O{} }{%
+    \begingroup
+      \def\@num{#1}%
+      \ifx\@num\@empty
+        \refstepcounter{sidenote}\edef\@num{\arabic{sidenote}}%
+      \fi
+      {\canonssidenotcolor\canons@sidenotemarkformat{\@num}}%
+    \endgroup
+  }
+  
+  % \sidenote[<num>]{text}
+  % Steps the counter only if <num> not provided.
+  \ProvideDocumentCommand{\sidenote}{ O{} m }{%
+    \begingroup
+      \def\@num{#1}%
+      \ifx\@num\@empty
+        \refstepcounter{sidenote}\edef\@num{\arabic{sidenote}}%
+      \fi
+      % typeset the in-text mark immediately
+      {\canonssidenotcolor\canons@sidenotemarkformat{\@num}}%
+      % Handle different margin modes
+      \ifthenelse{\equal{\canons@marginmode}{right} \OR \equal{\canons@marginmode}{left}}{%
+        % Single-sided: temporarily swap marginnote justification with sidenote justification
+        \let\CM@save@marginnotejustify\canonsmarginnotejustify
+        \let\canonsmarginnotejustify\canonssidenotejustify
+        \marginnote{%
+          {\canons@sidenotefont\canonssidenotcolor\canons@sidenotelabelformat{\@num}#2}%
+        }%
+        \let\canonsmarginnotejustify\CM@save@marginnotejustify
+      }{%
+        % Two-sided or default: set sidenote mode flag
+        \CM@sidenotemodetrue
+        \marginnote{%
+          {\canons@sidenotefont\canonssidenotcolor\canons@sidenotelabelformat{\@num}#2}%
+        }%
+        \CM@sidenotemodefalse
+      }%
+    \endgroup
+  }
+  
+  % \sidenotetext[<num>]{text}
+  % Does NOT step the counter if <num> omitted; uses the current value.
+  \ProvideDocumentCommand{\sidenotetext}{ O{} m }{%
+    \begingroup
+      \def\@num{#1}%
+      \ifx\@num\@empty
+        \edef\@num{\arabic{sidenote}}%
+      \fi
+      % Same approach as \sidenote
+      \ifthenelse{\equal{\canons@marginmode}{right} \OR \equal{\canons@marginmode}{left}}{%
+        % Single-sided: temporarily swap marginnote justification with sidenote justification
+        \let\CM@save@marginnotejustify\canonsmarginnotejustify
+        \let\canonsmarginnotejustify\canonssidenotejustify
+        \marginnote{%
+          {\canons@sidenotefont\canonssidenotcolor\canons@sidenotelabelformat{\@num}#2}%
+        }%
+        \let\canonsmarginnotejustify\CM@save@marginnotejustify
+      }{%
+        % Two-sided or default: set sidenote mode flag
+        \CM@sidenotemodetrue
+        \marginnote{%
+          {\canons@sidenotefont\canonssidenotcolor\canons@sidenotelabelformat{\@num}#2}%
+        }%
+        \CM@sidenotemodefalse
+      }%
+    \endgroup
+  }
+}
+
+% near the end of options processing (after \ProcessKeyvalOptions*)
+\AtBeginDocument{%
+  % Ensure the counter exists in both branches (our impl or the sidenotes pkg)
+  \@ifundefined{c@sidenote}{\newcounter{sidenote}}{}%
+  \edef\CM@numscheme{\CM@numbering}%
+  \@namedef{CM@do@numbering@global}{}%
+  \@namedef{CM@do@numbering@persection}{\@addtoreset{sidenote}{section}}%
+  \@namedef{CM@do@numbering@perchapter}{\@addtoreset{sidenote}{chapter}}%
+  \@namedef{CM@do@numbering@perpage}{%
+    \RequirePackage{perpage}%
+    \MakePerPage{sidenote}%
+  }%
+  \@nameuse{CM@do@numbering@\CM@numscheme}%
+}
+
+
+\makeatother
+
+\endinput

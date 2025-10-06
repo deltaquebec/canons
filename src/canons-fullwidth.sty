@@ -1,0 +1,326 @@
+%% ==============================================================================
+%% canons-fullwidth.sty
+%% =============================================================================
+%% Float handling and fullwidth environments for canons package
+%% =============================================================================
+%% Version:     1.2.0
+%% Date:        2025/10/05
+%% Author:      Daniel Quigley
+%% Contact:     dquigleydev@gmail.com
+%% License:     LaTeX Project Public License 1.3c
+%% =============================================================================
+%%
+%% DESCRIPTION
+%% -----------
+%% Provides environmental handling of fullwidth environments that integrate with
+%% the canons package. Can also work standalone with default LaTeX behavior.
+%%
+%% USAGE
+%% -----
+%% \usepackage{canons}        % Load canon system first
+%% \usepackage{canons-fullwidth} % Then load fullwidth extensions
+%%
+%% ENVIRONMENTS (when used with canons)
+%% ------------
+%% fullwidth[options] : Content spanning text + margin (auto-adapts to margin option)
+%%   Options:
+%%     skip=<dimension>        : Vertical space before environment (default: 0.5\baselineskip)
+%%     justification=<align>   : Alignment (centering/raggedright/raggedleft/justified, default: centering)
+%%     color=<color>           : Text color (default: document text color)
+%% fullwidth*[options] : Multi-page variant using adjustwidth (same options)
+%%
+%% DEPENDENCIES
+%% ------------
+%% caption, adjustbox, float, ifoddpage, changepage, xpatch, pgfkeys, ifthen, xcolor
+%%
+%% =============================================================================
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{canons-fullwidth}[2025/10/05 v1.2.0 Fullwidth environments for canons package]
+
+% Required packages
+\RequirePackage[%
+font=small,
+labelfont=bf,
+justification=justified
+]{caption}
+\RequirePackage{adjustbox}
+\RequirePackage{ifoddpage}
+\RequirePackage[strict]{changepage}
+\RequirePackage{xpatch}
+\RequirePackage{pgfkeys}
+\RequirePackage{ifthen}
+\RequirePackage{xcolor}
+
+\makeatletter
+
+% Define keys for fullwidth options
+\pgfkeys{
+  /fullwidth/.cd,
+  skip/.store in=\FW@skip,
+  skip/.default=0.5\baselineskip,
+  justification/.store in=\FW@just,
+  justification/.default=centering,
+  color/.store in=\FW@color,
+  color/.default={},
+  % Set defaults
+  skip=0.5\baselineskip,
+  justification=centering,
+  color={}
+}
+
+% Helper to process justification option
+\newcommand{\FW@setjust}{%
+  \ifthenelse{\equal{\FW@just}{centering}}{\centering}{%
+  \ifthenelse{\equal{\FW@just}{raggedright}}{\raggedright}{%
+  \ifthenelse{\equal{\FW@just}{raggedleft}}{\raggedleft}{%
+  \ifthenelse{\equal{\FW@just}{justified}}{}{%
+    \centering% fallback to centering if unrecognized
+  }}}}%
+}
+
+% Check if canons package is loaded
+\@ifpackageloaded{canons}{%
+	\PackageInfo{canons-fullwidth}{Canons package detected - configuring fullwidth environments}%
+	
+	% Shift calculation helper
+	\newlength{\FW@shift}
+	
+	% Get margin mode from canons
+	\def\canonsfloats@margins{\pagecanonmargins}
+	
+	% Configure based on margin mode
+	\ifthenelse{\equal{\canonsfloats@margins}{symmetric}}{%
+		%%% SYMMETRIC MARGINS CONFIGURATION %%%
+		
+		% Shift calculation for symmetric
+		\newcommand*\FW@calcshift{%
+			\setlength{\FW@shift}{\@totalleftmargin}%
+			\checkoddpage
+			\ifoddpage\else
+			\addtolength{\FW@shift}{\fullwidthoverhang}%
+			\fi
+		}
+		
+		% Caption format for symmetric
+		\DeclareCaptionFormat{FWadaptive}{%
+			\checkoddpage
+			\ifoddpage
+			\parbox{\dimexpr\linewidth-\fullwidthoverhang\relax}{\strut #1#2#3\par}%
+			\else
+			\hspace*{\fullwidthoverhang}%
+			\parbox{\dimexpr\linewidth-\fullwidthoverhang\relax}{\strut #1#2#3\par}%
+			\fi
+		}
+		
+		% Fullwidth environment
+		\newenvironment{fullwidth}[1][]{%
+			% Reset to defaults then apply options
+			\pgfkeys{/fullwidth/.cd, skip=0.5\baselineskip, justification=centering, color={}}%
+			\pgfkeys{/fullwidth/.cd, #1}%
+			\par\vspace{\FW@skip}\noindent\begingroup
+			\ifx\FW@color\@empty\else\color{\FW@color}\fi
+			\FW@calcshift
+			\hspace*{-\FW@shift}%
+			\begin{minipage}{\dimexpr\linewidth+\fullwidthoverhang\relax}%
+				\FW@setjust
+				%\captionsetup{format=FWadaptive,justification=justified,singlelinecheck=false,%
+			%		width=\dimexpr\linewidth-\fullwidthoverhang\relax}%
+			}{%
+			\end{minipage}%
+			\par\endgroup
+		}
+		
+		% Multi-page fullwidth
+		\newenvironment{fullwidth*}[1][]{%
+			% Reset to defaults then apply options
+			\pgfkeys{/fullwidth/.cd, skip=0.5\baselineskip, justification=centering, color={}}%
+			\pgfkeys{/fullwidth/.cd, #1}%
+			\par\vspace{\FW@skip}\noindent\begin{adjustwidth*}{0pt}{-\fullwidthoverhang}%
+			\ifx\FW@color\@empty\else\color{\FW@color}\fi
+			\FW@setjust
+			}{%
+			\end{adjustwidth*}\par
+		}
+	}{}
+	
+	\ifthenelse{\equal{\canonsfloats@margins}{antisymmetric}}{%
+		%%% ANTISYMMETRIC MARGINS CONFIGURATION %%%
+		
+		% Shift calculation for antisymmetric
+		\newcommand*\FW@calcshift{%
+			\setlength{\FW@shift}{\@totalleftmargin}%
+			\checkoddpage
+			\ifoddpage
+			\addtolength{\FW@shift}{\fullwidthoverhang}%
+			\fi
+		}
+		
+		% Caption format for antisymmetric
+		\DeclareCaptionFormat{FWadaptive}{%
+			\checkoddpage
+			\ifoddpage
+			\hspace*{\fullwidthoverhang}%
+			\parbox{\dimexpr\linewidth-\fullwidthoverhang\relax}{\strut #1#2#3\par}%
+			\else
+			\parbox{\dimexpr\linewidth-\fullwidthoverhang\relax}{\strut #1#2#3\par}%
+			\fi
+		}
+		
+		% Fullwidth environment
+		\newenvironment{fullwidth}[1][]{%
+			% Reset to defaults then apply options
+			\pgfkeys{/fullwidth/.cd, skip=0.5\baselineskip, justification=centering, color={}}%
+			\pgfkeys{/fullwidth/.cd, #1}%
+			\par\vspace{\FW@skip}\noindent\begingroup
+			\ifx\FW@color\@empty\else\color{\FW@color}\fi
+			\FW@calcshift
+			\hspace*{-\FW@shift}%
+			\begin{minipage}{\dimexpr\linewidth+\fullwidthoverhang\relax}%
+				\FW@setjust
+				%\captionsetup{format=FWadaptive,justification=justified,singlelinecheck=false,%
+				%	width=\dimexpr\linewidth-\fullwidthoverhang\relax}%
+			}{%
+			\end{minipage}%
+			\par\endgroup
+		}
+		
+		% Multi-page fullwidth
+		\newenvironment{fullwidth*}[1][]{%
+			% Reset to defaults then apply options
+			\pgfkeys{/fullwidth/.cd, skip=0.5\baselineskip, justification=centering, color={}}%
+			\pgfkeys{/fullwidth/.cd, #1}%
+			\par\vspace{\FW@skip}\noindent\begin{adjustwidth*}{-\fullwidthoverhang}{0pt}%
+			\ifx\FW@color\@empty\else\color{\FW@color}\fi
+			\FW@setjust
+			}{%
+			\end{adjustwidth*}\par
+		}
+	}{}
+	
+	\ifthenelse{\equal{\canonsfloats@margins}{right}}{%
+		%%% RIGHT MARGINS CONFIGURATION %%%
+		
+		% Shift calculation for right
+		\newcommand*\FW@calcshift{%
+			\setlength{\FW@shift}{\@totalleftmargin}%
+		}
+		
+		% Caption format for right
+		\DeclareCaptionFormat{FWadaptive}{%
+			\parbox{\dimexpr\linewidth-\fullwidthoverhang\relax}{\strut #1#2#3\par}%
+		}
+		
+		% Fullwidth environment
+		\newenvironment{fullwidth}[1][]{%
+			% Reset to defaults then apply options
+			\pgfkeys{/fullwidth/.cd, skip=0.5\baselineskip, justification=centering, color={}}%
+			\pgfkeys{/fullwidth/.cd, #1}%
+			\par\vspace{\FW@skip}\noindent\begingroup
+			\ifx\FW@color\@empty\else\color{\FW@color}\fi
+			\FW@calcshift
+			\hspace*{-\FW@shift}%
+			\begin{minipage}{\dimexpr\linewidth+\fullwidthoverhang\relax}%
+				\FW@setjust
+				%\captionsetup{format=FWadaptive,%
+				%	width=\dimexpr\linewidth-\fullwidthoverhang\relax,%
+				%	justification=justified,singlelinecheck=false}%
+			}{%
+			\end{minipage}%
+			\par\endgroup
+		}
+		
+		% Multi-page fullwidth
+		\newenvironment{fullwidth*}[1][]{%
+			% Reset to defaults then apply options
+			\pgfkeys{/fullwidth/.cd, skip=0.5\baselineskip, justification=centering, color={}}%
+			\pgfkeys{/fullwidth/.cd, #1}%
+			\par\vspace{\FW@skip}\noindent\begin{adjustwidth*}{0pt}{-\fullwidthoverhang}%
+			\ifx\FW@color\@empty\else\color{\FW@color}\fi
+			\FW@setjust
+			}{%
+			\end{adjustwidth*}\par
+		}
+	}{}
+	
+	\ifthenelse{\equal{\canonsfloats@margins}{left}}{%
+		%%% LEFT MARGINS CONFIGURATION %%%
+		
+		% Shift calculation for left
+		\newcommand*\FW@calcshift{%
+			\setlength{\FW@shift}{\@totalleftmargin}%
+			\addtolength{\FW@shift}{\fullwidthoverhang}%
+		}
+		
+		% Caption format for left
+		\DeclareCaptionFormat{FWadaptive}{%
+			\hspace*{\fullwidthoverhang}%
+			\parbox{\dimexpr\linewidth-\fullwidthoverhang\relax}{\strut #1#2#3\par}%
+		}
+		
+		% Fullwidth environment
+		\newenvironment{fullwidth}[1][]{%
+			% Reset to defaults then apply options
+			\pgfkeys{/fullwidth/.cd, skip=0.5\baselineskip, justification=centering, color={}}%
+			\pgfkeys{/fullwidth/.cd, #1}%
+			\par\vspace{\FW@skip}\noindent\begingroup
+			\ifx\FW@color\@empty\else\color{\FW@color}\fi
+			\FW@calcshift
+			\hspace*{-\FW@shift}%
+			\begin{minipage}{\dimexpr\linewidth+\fullwidthoverhang\relax}%
+				\FW@setjust
+				%\captionsetup{format=FWadaptive,%
+				%	width=\dimexpr\linewidth-\fullwidthoverhang\relax,%
+				%	singlelinecheck=false}%
+			}{%
+			\end{minipage}%
+			\par\endgroup
+		}
+		
+		% Multi-page fullwidth
+		\newenvironment{fullwidth*}[1][]{%
+			% Reset to defaults then apply options
+			\pgfkeys{/fullwidth/.cd, skip=0.5\baselineskip, justification=centering, color={}}%
+			\pgfkeys{/fullwidth/.cd, #1}%
+			\par\vspace{\FW@skip}\noindent\begin{adjustwidth*}{-\fullwidthoverhang}{0pt}%
+			\ifx\FW@color\@empty\else\color{\FW@color}\fi
+			\FW@setjust
+			}{%
+			\end{adjustwidth*}\par
+		}
+	}{}
+	
+}{%
+	% Canons package not loaded - provide default behavior
+	\PackageWarning{canons-fullwidth}{Canons package not detected - using default LaTeX behavior for fullwidth}%
+	
+	% Simple fullwidth environment without margin integration
+	\newenvironment{fullwidth}[1][]{%
+		% Reset to defaults then apply options
+		\pgfkeys{/fullwidth/.cd, skip=0.5\baselineskip, justification=centering, color={}}%
+		\pgfkeys{/fullwidth/.cd, #1}%
+		\par\vspace{\FW@skip}\noindent\begingroup
+		\ifx\FW@color\@empty\else\color{\FW@color}\fi
+		\begin{minipage}{\linewidth}%
+			\FW@setjust
+		}{%
+		\end{minipage}%
+		\par\endgroup
+	}
+	
+	% Simple multi-page fullwidth
+	\newenvironment{fullwidth*}[1][]{%
+		% Reset to defaults then apply options
+		\pgfkeys{/fullwidth/.cd, skip=0.5\baselineskip, justification=centering, color={}}%
+		\pgfkeys{/fullwidth/.cd, #1}%
+		\par\vspace{\FW@skip}\noindent
+		\ifx\FW@color\@empty\else\color{\FW@color}\fi
+		\FW@setjust
+	}{%
+		\par
+	}
+}
+
+\makeatother
+
+\endinput
