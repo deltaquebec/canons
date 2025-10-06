@@ -2,15 +2,15 @@
 
 [![License: LPPL 1.3c](https://img.shields.io/badge/License-LPPL%201.3c-blue.svg)](https://www.latex-project.org/lppl/)
 
-**Deterministic, historically-grounded page layouts with modern margin control**
+**Deterministic, historically-grounded page layouts with margin control**
 
-The **canons** package family implements classical page construction canons as explicit mathematical rules, providing reproducible layouts based on historical book design principles. Whether you need Van de Graaf's medieval proportions, Tufte's asymmetric margins, or a custom modular grid, canons delivers precise, scale-equivariant layouts through the familiar `geometry` interface.
+The **canons** package family implements classical and classical-inspired page construction canons as explicit mathematical rules, providing reproducible layouts based on historical book design. Whether you need Van de Graaf's medieval proportions, Tufte's asymmetric margins, or a custom modular grid, canons delivers precise, scale-equivariant layouts through the familiar `geometry` interface.
 
 ---
 
 ## Package Family
 
-This repository contains three integrated packages:
+This repository contains three compatible packages:
 
 | Package | Purpose | Standalone? |
 |---------|---------|-------------|
@@ -27,8 +27,8 @@ This repository contains three integrated packages:
 - **Five classical canons**: Van de Graaf, Villard de Honnecourt, Tufte, Canon des Ateliers, Grid
 - **Four margin modes**: symmetric (outer margins), antisymmetric (inner margins), right-sided, left-sided
 - **Gutter support**: Two calculation modes for binding allowance
-- **Grid canon**: Modular N×N system with full parametric control
-- **Deterministic**: Same inputs always produce same output
+- **Grid canon**: Modular N×N system with parametric control
+- **Deterministic**: Same inputs produce same output
 - **Class-agnostic**: Works with article, book, report
 - **Exports dimensions** for downstream packages
 
@@ -54,7 +54,7 @@ This repository contains three integrated packages:
 
 ```bash
 # Clone the repository
-git clone https://github.com/dquigley533/canons.git
+git clone https://github.com/deltaquebec/canons.git
 
 # Copy .sty files to your local texmf tree
 cp canons/src/*.sty ~/texmf/tex/latex/canons/
@@ -149,7 +149,7 @@ Main text with proper proportions.\sidenote{Numbered annotation}
 
 | Option | Description |
 |--------|-------------|
-| `vdhN=<int>` | Division factor for Villard canon (3, 6, 9, 12, 15) |
+| `vdhN=<int>` | Division factor for Honnecourt canon (3, 6, 9, 12, 15) |
 | `ateliersstyle=<style>` | Style variant: ordinary, neater, or luxury |
 | `gridN=<int>` | Number of grid divisions (≥3) |
 | `gridinner=<cells>` | Grid cells for inner margin |
@@ -161,9 +161,9 @@ Main text with proper proportions.\sidenote{Numbered annotation}
 
 - `gutterval=<length>` — set binding gutter width
 - `guttermode=geometry|satzspiegel` — choose gutter adjustment mode
-- `showframe` — visualize layout frame (debugging)
+- `showframe` — visualize layout frame
 - `landscape` — landscape orientation
-- `paper=<size>` — pass custom paper size to `geometry`
+- `paper=<size>` — pass paper size to `geometry`
 
 ---
 
@@ -184,9 +184,9 @@ Main text with proper proportions.\sidenote{Numbered annotation}
 
 Comprehensive documentation is included for each package:
 
-- **[canons.pdf](docs/canons.pdf)** - Complete reference for the core layout package
-- **[canons-margins.pdf](docs/canons-margins.pdf)** - Margin notes and sidenotes guide  
-- **[canons-fullwidth.pdf](docs/canons-fullwidth.pdf)** - Fullwidth environments reference
+- **[canons.pdf](docs/documentation-canons.pdf)** - Complete reference for the core layout package
+- **[canons-margins.pdf](docs/documentation-canons-margins.pdf)** - Margin notes and sidenotes guide  
+- **[canons-fullwidth.pdf](docs/documentation-canons-fullwidth.pdf)** - Fullwidth environments reference
 
 Each manual includes:
 - Conceptual framework and design philosophy
@@ -196,35 +196,10 @@ Each manual includes:
 - Troubleshooting guide
 - Quick reference appendix
 
----
+Behind the scenes initial sketchwork and proportion work:
 
-## Examples Gallery
-
-```latex
-% Van de Graaf canon with binding gutter
-\usepackage[canon=vdg, margins=symmetric, gutterval=10mm, 
-            guttermode=satzspiegel]{canons}
-
-% Tufte-style with per-page sidenote numbering
-\usepackage[canon=tufte, margins=right]{canons}
-\usepackage[numbering=perpage, size=small, color=darkgray]{canons-margins}
-
-% Fullwidth figure in two-sided layout
-\begin{figure}
-  \begin{fullwidth}[justification=centered]
-    \includegraphics[width=\linewidth]{diagram.pdf}
-  \end{fullwidth}
-  \caption{Wide diagram with caption below}
-\end{figure}
-
-% Grid canon reproducing Van de Graaf exactly
-\usepackage[canon=grid, gridN=9, gridinner=1, gridouter=2,
-            gridtop=1, gridbottom=2]{canons}
-
-% Separate control of margin material
-\usepackage[marginsize=false, marginnotesize=scriptsize,
-            sidenotesize=footnotesize, numbering=perchapter]{canons-margins}
-```
+- **[bts-ratio.pdf](bts/bts-ratio.pdf)** - Some handwork on docuemnt ratios
+- **[bts-sketch.pdf](bts/bts-sketch.pdf)** - Some sketches of document leylines drawn with ruler 
 
 ---
 
@@ -232,9 +207,9 @@ Each manual includes:
 
 ### Why canons?
 
-The *page canon* is not merely a historical curiosity: it encodes an implicit geometry of reading. By reintroducing the proportional ideals of Villard, Van de Graaf, and Tufte into LaTeX, this project treats page composition as a mathematical artifact—balancing the aesthetic harmony of Renaissance design with the analytic control required for technical and academic documents.
+The *page canon* encodes an implicit geometry of information; by reintroducing the proportional ideals of Honnecourt, Van de Graaf, and Tufte into LaTeX, this project treats page composition as a mathematical artifact that balances the aesthetic harmony of Western Medieval and Renaissance design with the analytic control required for technical and academic documents.
 
-If you want **deterministic, reproducible** layouts from classical canons with explicit control of marginalia and gutters, and you **don't** want a full document class, use canons. If you want a comprehensive book production framework, use `memoir` or KOMA-Script; if you want a curated editorial idiom, use `tufte-book`.
+If you want **deterministic, reproducible** layouts from classical canons with explicit control of marginalia and gutters, and you **do not** want a full document class, use canons. If you want a comprehensive book production framework, use `memoir` or KOMA-Script; if you want a curated editorial idiom, use `tufte-book`.
 
 ### Key Principles
 
@@ -248,7 +223,7 @@ If you want **deterministic, reproducible** layouts from classical canons with e
 - **Algebraic implementations** of historical geometric constructions
 - **Grid canon** exposes the implicit modular structure of classical canons
 - **Margin mode semantics**: `symmetric`/`antisymmetric`/`right`/`left` explicit and class-aware
-- **Gutter philosophies**: Two distinct approaches (geometry vs. satzspiegel modes)
+- **Gutter philosophies**: Two distinct approaches (geometry; satzspiegel)
 - **Exported dimensions**: Downstream packages get `\marginandtext`, `\fullwidthoverhang`, etc.
 
 ---
@@ -299,7 +274,7 @@ Contributions are welcome! Please:
 
 Planned enhancements:
 
-- [ ] Additional historical canons (Golden Canon, Rosarivo)
+- [ ] Additional historical canons
 - [ ] Baseline grid integration
 - [ ] Per-page canon switching
 - [ ] Advanced float positioning for fullwidth content
@@ -313,11 +288,11 @@ Planned enhancements:
 If you use these packages in academic work, please cite:
 
 ```bibtex
-@software{canons2025,
+@misc{canons2025,
   author = {Quigley, Daniel},
   title = {Canons: Classical Page Layout for LaTeX},
   year = {2025},
-  url = {https://github.com/dquigley533/canons},
+  url = {https://github.com/deltaquebec/canons},
   version = {1.2},
   note = {LPPL 1.3c}
 }
@@ -337,7 +312,8 @@ This work may be distributed and/or modified under the conditions of the LaTeX P
 
 **Daniel Quigley**  
 📧 [dquigleydev@gmail.com](mailto:dquigleydev@gmail.com)  
-🔗 [GitHub](https://github.com/dquigley533)
+🔗 [GitHub](https://github.com/deltaquebec)
+🔗 [Website](https://dquigley.dev)
 
 ---
 
@@ -345,13 +321,12 @@ This work may be distributed and/or modified under the conditions of the LaTeX P
 
 This project draws conceptual inspiration from:
 
-- **Jan Tschichold**, *The Form of the Book*
-- **Villard de Honnecourt**, *Livre de Portraiture*
-- **J. A. van de Graaf**, *Canon of Page Construction*
-- **Edward Tufte**, *Beautiful Evidence*
+- **Jan Tschichold**
+- **Robert Bringhurst**
+- **Edward Tufte**
 
 Special thanks to:
-- The `geometry` package maintainers for providing solid foundations
+- The `geometry`,`memoir`, `KOMA-script`, and `tufte-latex` package maintainers for providing solid foundations
 - The LaTeX community for feedback and testing
 - All contributors who have helped improve these packages
 
