@@ -1,5 +1,7 @@
 manifest.txt
 README.md
+.gitignore
+LICENSE
 docs/documentation-canons.pdf
 docs/documentation-canons-margins.pdf
 docs/documentation-canons-fullwidth.pdf
