@@ -186,22 +186,22 @@ Main text with proper proportions.\sidenote{Numbered annotation}
 
 Comprehensive documentation is included for each package:
 
-- **[canons.pdf](docs/documentation-canons.pdf)** - Complete reference for the core layout package
-- **[canons-margins.pdf](docs/documentation-canons-margins.pdf)** - Margin notes and sidenotes guide  
-- **[canons-fullwidth.pdf](docs/documentation-canons-fullwidth.pdf)** - Fullwidth environments reference
+- **[canons.pdf](docs/documentation-canons.pdf)**: complete reference for the core layout package;
+- **[canons-margins.pdf](docs/documentation-canons-margins.pdf)**: margin notes and sidenotes guide;
+- **[canons-fullwidth.pdf](docs/documentation-canons-fullwidth.pdf)**: fullwidth environments reference.
 
 Each manual includes:
-- Conceptual framework and design philosophy
-- Complete option reference
-- Usage patterns and common tasks
-- Integration examples
-- Troubleshooting guide
-- Quick reference appendix
+- conceptual framework and design philosophy;
+- complete option reference;
+- usage patterns and common tasks;
+- integration examples;
+- troubleshooting guide;
+- quick reference appendix.
 
 Behind the scenes initial sketchwork and proportion work:
 
-- **[bts-ratio.pdf](bts/bts-ratio.pdf)** - Some handwork on docuemnt ratios
-- **[bts-sketch.pdf](bts/bts-sketch.pdf)** - Some sketches of document leylines drawn with ruler 
+- **[bts-ratio.pdf](bts/bts-ratio.pdf)**: some handwork on docuemnt ratios;
+- **[bts-sketch.pdf](bts/bts-sketch.pdf)**: some sketches of document leylines drawn with ruler.
 
 ---
 
@@ -264,17 +264,15 @@ All dependencies are available in standard TeX distributions (TeX Live, MiKTeX).
 
 Contributions are welcome! Please:
 
-1. Check existing issues before opening new ones
-2. Include minimal working examples for bug reports
-3. Follow the existing code style
-4. Update documentation for new features
-5. Test with multiple document classes
+1. check existing issues before opening new ones;
+2. include minimal working examples for bug reports;
+3. follow the existing code style;
+4. update documentation for new features;
+5. test with multiple document classes.
 
 ---
 
-## Roadmap
-
-Planned enhancements:
+## Future work
 
 - [ ] Additional historical canons
 - [ ] Baseline grid integration
