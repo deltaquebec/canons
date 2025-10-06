@@ -6,6 +6,8 @@
 
 The **canons** package family implements classical and classical-inspired page construction canons as explicit mathematical rules, providing reproducible layouts based on historical book design. Whether you need Van de Graaf's medieval proportions, Tufte's asymmetric margins, or a custom modular grid, canons delivers precise, scale-equivariant layouts through the familiar `geometry` interface.
 
+🔗 [Overleaf]([https://dquigley.dev](https://www.overleaf.com/read/mzqmhhznwkwg#88e0a5))
+
 ---
 
 ## Package Family
