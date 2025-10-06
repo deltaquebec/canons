@@ -1,7 +1,5 @@
 # Canons: Classical Page Layout for LaTeX
 
-[![License: LPPL 1.3c](https://img.shields.io/badge/License-LPPL%201.3c-blue.svg)](https://www.latex-project.org/lppl/)
-
 **Deterministic, historically-grounded page layouts with margin control**
 
 The **canons** package family implements classical and classical-inspired page construction canons as explicit mathematical rules, providing reproducible layouts based on historical book design. Whether you need Van de Graaf's medieval proportions, Tufte's asymmetric margins, or a custom modular grid, canons delivers precise, scale-equivariant layouts through the familiar `geometry` interface.
