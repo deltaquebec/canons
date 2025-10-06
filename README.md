@@ -312,7 +312,7 @@ This work may be distributed and/or modified under the conditions of the LaTeX P
 
 **Daniel Quigley**  
 📧 [dquigleydev@gmail.com](mailto:dquigleydev@gmail.com)  
-🔗 [GitHub](https://github.com/deltaquebec)
+🔗 [GitHub](https://github.com/deltaquebec)  
 🔗 [Website](https://dquigley.dev)
 
 ---
