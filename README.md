@@ -6,7 +6,6 @@ The **canons** package family implements classical and classical-inspired page c
 
 🔗 [Overleaf](https://www.overleaf.com/read/mzqmhhznwkwg#88e0a5)
 
----
 
 ## Package Family
 
@@ -18,7 +17,6 @@ This repository contains three compatible packages:
 | **canons-margins** | margin notes and numbered sidenotes | yes |
 | **canons-fullwidth** | content spanning text and margin area | recommended with canons |
 
----
 
 ## Features
 
@@ -48,7 +46,6 @@ This repository contains three compatible packages:
 - **Two variants**: single-page (`fullwidth`) and multi-page (`fullwidth*`);
 - **Caption flexibility**: standard positioning or Tufte-style margin captions.
 
----
 
 ## Installation
 
@@ -65,7 +62,6 @@ texhash ~/texmf
 
 Or place the `.sty` files in your project directory.
 
----
 
 ## Quick start
 
@@ -109,7 +105,6 @@ Main text with proper proportions.\sidenote{Numbered annotation}
 \usepackage[canon=grid, gridN=12, gridinner=1, gridouter=3]{canons}
 ```
 
----
 
 ## Available canons
 
@@ -121,7 +116,6 @@ Main text with proper proportions.\sidenote{Numbered annotation}
 | **Canon des Ateliers** (`ateliers`) | french printing tradition | three styles: ordinary/neater/luxury |
 | **Grid** (`grid`) | modern modular system | full N×N parametric control |
 
----
 
 ## Reference
 
@@ -165,7 +159,6 @@ Main text with proper proportions.\sidenote{Numbered annotation}
 - `landscape` — landscape orientation;
 - `paper=<size>` — pass paper size to `geometry`.
 
----
 
 ## Provided commands
 
@@ -178,7 +171,6 @@ Main text with proper proportions.\sidenote{Numbered annotation}
 | `\marginandsep` | margin + separator width |
 | `\fullwidthoverhang` | distance extending into margin area |
 
----
 
 ## Documentation
 
@@ -201,7 +193,6 @@ Behind the scenes initial sketchwork and proportion work:
 - **[bts-ratio.pdf](bts/bts-ratio.pdf)**: some handwork on docuemnt ratios;
 - **[bts-sketch.pdf](bts/bts-sketch.pdf)**: some sketches of document leylines drawn with ruler.
 
----
 
 ## Design Philosophy
 
@@ -226,7 +217,6 @@ If you want **deterministic, reproducible** layouts from classical canons with e
 - **Gutter philosophies** two distinct approaches (geometry; satzspiegel);
 - **Exported dimensions** downstream packages get `\marginandtext`, `\fullwidthoverhang`, etc..
 
----
 
 ## Dependencies
 
@@ -242,7 +232,6 @@ If you want **deterministic, reproducible** layouts from classical canons with e
 
 All dependencies are available in standard TeX distributions (TeX Live, MiKTeX).
 
----
 
 ## Compatibility
 
@@ -256,7 +245,6 @@ All dependencies are available in standard TeX distributions (TeX Live, MiKTeX).
 - Compatible with standard `figure`, `table`, caption packages;
 - Coordinates with `geometry` package options.
 
----
 
 ## Contributing
 
@@ -268,7 +256,6 @@ Contributions are welcome! Please:
 4. update documentation for new features;
 5. test with multiple document classes.
 
----
 
 ## Future work
 
@@ -279,7 +266,6 @@ Contributions are welcome! Please:
 - [ ] Gallery of example documents
 - [ ] Visualization macros for canon grids
 
----
 
 ## Citation
 
@@ -296,7 +282,6 @@ If you use these packages in academic work, please cite:
 }
 ```
 
----
 
 ## License
 
@@ -304,7 +289,6 @@ If you use these packages in academic work, please cite:
 
 This work may be distributed and/or modified under the conditions of the LaTeX Project Public License, either version 1.3c of this license or (at your option) any later version.
 
----
 
 ## Author
 
@@ -313,7 +297,6 @@ This work may be distributed and/or modified under the conditions of the LaTeX P
 [GitHub](https://github.com/deltaquebec)  
 [Website](https://dquigley.dev)
 
----
 
 ## Acknowledgments
 
@@ -328,7 +311,6 @@ Special thanks to:
 - the LaTeX community for feedback and testing;
 - all contributors who have helped improve these packages.
 
----
 
 ## See also
 
