@@ -1,99 +1,74 @@
-# Canons: Classical Page Layout for LaTeX
+# Canons: classical page layout for LaTeX
 
-**Deterministic, historically-grounded page layouts with margin control**
+**Deterministic, historically-grounded page layouts with in-house marginalia**
 
-The **canons** package family implements classical and classical-inspired page construction canons as explicit mathematical rules, providing reproducible layouts based on historical book design. Whether you need Van de Graaf's medieval proportions, Tufte's asymmetric margins, or a custom modular grid, canons delivers precise, scale-equivariant layouts through the familiar `geometry` interface.
+The **canons** package implements classical and classical-inspired page construction canons as explicit mathematical rules, providing reproducible layouts based on historical book design. A single package now supplies page geometry, margin notes, sidenotes, and fullwidth environments with one external dependency: `geometry`.
 
-🔗 [Overleaf](https://www.overleaf.com/read/mzqmhhznwkwg#88e0a5)
+[Overleaf](https://www.overleaf.com/read/ftstdrznqvqb#222e96)
 
+## What changed in 3.x
 
-## Package Family
+Versions 1.x shipped three packages (`canons`, `canons-margins`, `canons-fullwidth`) coordinating roughly a dozen external dependencies (`marginnote`, `marginfix`, `sidenotes`, `perpage`, `caption`, `adjustbox`, `ifoddpage`, `changepage`, `xpatch`, `kvoptions`, `pgfkeys`, `xcolor`, ...). Version 3.x has foled everything into one `.sty` with in-house implementations of odd/even-page detection, keyval parsing, margin notes, sidenotes, per-page counters, and the fullwidth environment. If `sidenotes` is loaded, canons defers to it for styling hooks; otherwise, canons supplies its own.
 
-This repository contains three compatible packages:
+Do not ask what happened to version 2.x....
 
-| Package | Purpose | Standalone? |
-|---------|---------|-------------|
-| **canons** | page layout via classical canons | yes (core package) |
-| **canons-margins** | margin notes and numbered sidenotes | yes |
-| **canons-fullwidth** | content spanning text and margin area | recommended with canons |
+## Requirements
 
+- **LuaLaTeX**. The marginalia engine uses `\savepos`, `\lastxpos`, `\lastypos` for position-aware placement; pdfLaTeX and XeLaTeX are not supported;
+- **geometry** (the only declared external package dependency);
+- two compilation passes for accurate sidenote/margin-note vertical positioning (position labels are written to `.aux`).
 
 ## Features
 
-### canons.sty (core package)
-
-- **Five classical canons**: Van de Graaf, Villard de Honnecourt, Tufte, Canon des Ateliers, Grid;
-- **Four margin modes**: symmetric (outer margins), antisymmetric (inner margins), right-sided, left-sided;
-- **Gutter support**: two calculation modes for binding allowance;
-- **Grid canon**: modular N×N system with parametric control;
-- **Deterministic**: same inputs produce same output;
-- **Class-agnostic**: works with article, book, report;
-- **Exports dimensions** for downstream packages.
-
-### canons-margins.sty
-
-- **Unified control**: manage margin notes and sidenotes together or independently;
-- **Four numbering schemes**: global, per-section, per-chapter, per-page;
-- **Smart justification**: adapts to margin placement automatically;
-- **Integrates with sidenotes package** when present;
-- **Configurable**: sizes, colors, alignment all controllable.
-
-### canons-fullwidth.sty
-
-- **Fullwidth environments**: content spanning text block and margin;
-- **Tufte-inspired**: wide figures without scaling;
-- **Mode-aware**: adapts to all four margin modes automatically;
-- **Two variants**: single-page (`fullwidth`) and multi-page (`fullwidth*`);
-- **Caption flexibility**: standard positioning or Tufte-style margin captions.
-
+- **Five canons**: Van de Graaf; Villard de Honnecourt (parametric $N\in\{3,6,9,12,15\}$); Tufte; Canon des Ateliers (three styles); Grid ($N\times N$ modular);
+- **Four margin modes**: `symmetric`; `antisymmetric`; `right`; `left`;
+- **Gutter support** with two calculation modes: `geometry` (textwidth-invariant) and `satzspiegel` (recomputed on leaf width);
+- **In-house marginalia** with collision avoidance, font isolation (`\normalfont` at the head of every note), explicit voffset, and four numbering modes (`global`, `persection`, `perchapter`, `perpage`);
+- **Unified and split configuration** of size, justification, and line spread across margin notes and sidenotes;
+- **Fullwidth environment** that extends into the outer margin and shifts sides correctly in two-sided modes;
+- **PDF/UA-2 tagging hooks** (marginalia tagged as `Aside`) when `\DocumentMetadata` is used;
+- **Exported lengths** for margin-aware figures and rules: `\marginandtext`; `\marginandsep`; `\textandsep`; `\fullwidthoverhang`; `\overflowingheadlen`;
+- **Runtime reconfiguration** via `\pagecanonsetup{...}`;
+- **Class-aware defaults**: `article` defaults to `margins=right`; `book`/`report` to `margins=symmetric`.
 
 ## Installation
 
 ```bash
-# clone repository
 git clone https://github.com/deltaquebec/canons.git
-
-# copy .sty files to local texmf tree
-cp canons/src/*.sty ~/texmf/tex/latex/canons/
-
-# update TeX filename database
+cp canons/src/canons.sty ~/texmf/tex/latex/canons/
 texhash ~/texmf
 ```
 
-Or place the `.sty` files in your project directory.
-
+Or place `canons.sty` in your project directory.
 
 ## Quick start
 
-### Basic usage
-
 ```latex
-% classic book with Van de Graaf proportions
+\DocumentMetadata{lang=en-US, pdfversion=2.0}
 \documentclass{book}
 \usepackage[canon=vdg, margins=symmetric, gutterval=8mm]{canons}
-\usepackage{canons-margins}
-\usepackage{canons-fullwidth}
 
 \begin{document}
 
-Main text with proper proportions.\sidenote{Numbered annotation}
+Main text with canonical proportions.\sidenote{Numbered annotation in the outer margin.}
 
 \begin{figure}[h]
   \begin{fullwidth}
     \includegraphics[width=\linewidth]{wide-plot.pdf}
   \end{fullwidth}
-  \caption{Figure spanning text and margin}
+  \caption{Figure spanning text and margin.}
 \end{figure}
 
 \end{document}
 ```
 
+Compile with `lualatex` twice.
+
 ### Minimal examples
 
 ```latex
 % notes-heavy article
-\usepackage[canon=tufte, margins=right]{canons}
-\usepackage[numbering=perpage, color=darkgray]{canons-margins}
+\usepackage[canon=tufte, margins=right, numbering=perpage, size=small]{canons}
 
 % economical textbook
 \usepackage[canon=vdh, vdhN=12, paper=a4paper]{canons}
@@ -103,224 +78,149 @@ Main text with proper proportions.\sidenote{Numbered annotation}
 
 % custom modular grid
 \usepackage[canon=grid, gridN=12, gridinner=1, gridouter=3]{canons}
-```
 
+% geometry only; marginalia suppressed
+\usepackage[canon=false, nomarginalia]{canons}
+```
 
 ## Available canons
 
-| Canon | Description | Key Feature |
-|-------|-------------|-------------|
-| **Van de Graaf** (`vdg`) | medieval manuscript proportions | 1/9 margins, 2/3 text area |
-| **Villard de Honnecourt** (`vdh`) | parametric family (N=3,6,9,12,15) | width-based geometric divisions |
-| **Tufte** (`tufte`) | Edward Tufte's book design | wide outer margin for notes |
-| **Canon des Ateliers** (`ateliers`) | french printing tradition | three styles: ordinary/neater/luxury |
-| **Grid** (`grid`) | modern modular system | full N×N parametric control |
+| Canon | Key | Description |
+|-------|-----|-------------|
+| Van de Graaf | `vdg` | medieval manuscript proportions; 1/9 margins, 2/3 text area |
+| Villard de Honnecourt | `vdh` | parametric family ($N \in \{3,6,9,12,15\}$) |
+| Tufte | `tufte` | wide outer margin for extensive marginalia |
+| Canon des Ateliers | `ateliers` | french tradition; ordinary / neater / luxury |
+| Grid | `grid` | modern $N \times N$ modular system |
+| (disabled) | `false` | `geometry` only; canon math bypassed |
 
-
-## Reference
+## Option reference
 
 ### Canon selection
 
-| Option | Description |
-|--------|-------------|
-| `canon=vdg` | Van de Graaf canon (1/9 margins) — *default* |
-| `canon=vdh` | Villard de Honnecourt canon (N-fold divisions) |
-| `canon=tufte` | Edward Tufte's book layout system |
-| `canon=ateliers` | Canon des Ateliers (ordinary/neater/luxury) |
-| `canon=grid` | Grid-based canon (N×N divisions) |
-| `canon=false` | disable canon logic; use `geometry` only |
+| Option | Values | Default |
+|--------|--------|---------|
+| `canon` | `vdg`, `vdh`, `tufte`, `ateliers`, `grid`, `false` | `vdg` |
+| `vdhN` | 3, 6, 9, 12, 15 | 6 |
+| `ateliersstyle` | `ordinary`, `neater`, `luxury` | `ordinary` |
+| `gridN` | integer $\geq 3$ | 6 |
+| `gridinner`, `gridouter`, `gridtop`, `gridbottom` | integers | 1, 2, 1, 2 |
 
-### Margin modes
+### Layout
 
-| Option | Description |
-|--------|-------------|
-| `margins=symmetric` | two-sided layout with alternating inner/outer margins *(book/report default)* |
-| `margins=antisymmetric` | two-sided layout with marginalia inside gutter |
-| `margins=right` | one-sided layout with right-side marginalia *(article default)* |
-| `margins=left` | one-sided layout with left-side marginalia |
+| Option | Values | Default |
+|--------|--------|---------|
+| `margins` | `symmetric`, `antisymmetric`, `right`, `left` | class-dependent |
+| `gutterval` | dimension | `0mm` |
+| `guttermode` | `geometry`, `satzspiegel` | `geometry` |
+| `showframe`, `landscape`, `debug`, `nomarginalia` | bare booleans | off |
+| `paper` | forwarded to `geometry` | — |
 
-### Canon-specific parameters
+### Marginalia (unified)
 
-| Option | Description |
-|--------|-------------|
-| `vdhN=<int>` | division factor for Honnecourt canon (3, 6, 9, 12, 15) |
-| `ateliersstyle=<style>` | style variant: ordinary, neater, luxury |
-| `gridN=<int>` | number of grid divisions (≥3) |
-| `gridinner=<cells>` | grid cells for inner margin |
-| `gridouter=<cells>` | grid cells for outer margin |
-| `gridtop=<cells>` | grid cells for top margin |
-| `gridbottom=<cells>` | grid cells for bottom margin |
+| Option | Values | Default |
+|--------|--------|---------|
+| `size` | font-size name | `footnotesize` |
+| `justification` | `default`, `raggedright`, `raggedleft`, `centered`, `justified` | `default` |
+| `notespread` | factor | `1.05` |
+| `numbering` | `global`, `persection`, `perchapter`, `perpage` | `global` |
 
-### Layout, debugging
+### Marginalia (split; override unified)
 
-- `gutterval=<length>` — set binding gutter width;
-- `guttermode=geometry|satzspiegel` — choose gutter adjustment mode;
-- `showframe` — visualize layout frame;
-- `landscape` — landscape orientation;
-- `paper=<size>` — pass paper size to `geometry`.
+| Option | Values | Default |
+|--------|--------|---------|
+| `marginsize` | `true` / `false` | `true` |
+| `marginnotesize`, `sidenotesize` | font-size name | follows `size` |
+| `marginjustify` | `true` / `false` | `true` |
+| `marginnotejustify`, `sidenotejustify` | justification value | follows `justification` |
 
+## Commands
 
-## Provided commands
+| Command | Action |
+|---------|--------|
+| `\marginnote{text}` / `\marginnote{text}[voffset]` | margin note, collision-aware |
+| `\sidenote{text}` / `\sidenote[n]{text}[voffset]` | numbered sidenote |
+| `\sidenotemark` / `\sidenotemark[n]` | inline mark only |
+| `\sidenotetext{text}[voffset]` | note body only |
+| `\canonssidenotemarkformat`, `\canonssidenotelabelformat` | format hooks |
+| `\pagecanonsetup{…}` | reconfigure at any point |
+| `\pagecanonmargins` | expands to current margin mode |
+| `\canonsswitchmargin`, `\canonsresetmargin` | toggle / reset marginpar side |
 
-| Command | Description |
-|---------|-------------|
-| `\pagecanoninfo` | displays current canon and layout parameters |
-| `\pagecanonmargins` | returns current margin mode |
-| `\pagecanonsetup{...}` | reapply or modify layout mid-document |
-| `\marginandtext` | textblock + margin + separator width |
-| `\marginandsep` | margin + separator width |
-| `\fullwidthoverhang` | distance extending into margin area |
+## Exported lengths
 
+| Length | Value |
+|--------|-------|
+| `\marginandtext` | `\textwidth + \marginparwidth + \marginparsep` |
+| `\marginandsep` | `\marginparwidth + \marginparsep` |
+| `\textandsep` | `\textwidth + \marginparsep` |
+| `\fullwidthoverhang` | `\marginparwidth + \marginparsep` |
+| `\overflowingheadlen` | same as `\marginandtext` |
 
 ## Documentation
 
-Comprehensive documentation is included for each package:
+The repository includes a combined primer and test suite (`canons-primer.pdf`) organized in three parts: conceptual framework; user manual; test suite with edge cases. All example pages render with `showframe` enabled so geometry effects are directly visible.
 
-- **[canons.pdf](docs/documentation-canons.pdf)**: complete reference for the core layout package;
-- **[canons-margins.pdf](docs/documentation-canons-margins.pdf)**: margin notes and sidenotes guide;
-- **[canons-fullwidth.pdf](docs/documentation-canons-fullwidth.pdf)**: fullwidth environments reference.
+## Scope and limitations
 
-Each manual includes:
-- conceptual framework and design philosophy;
-- complete option reference;
-- usage patterns and common tasks;
-- integration examples;
-- troubleshooting guide;
-- quick reference appendix.
-
-Behind the scenes initial sketchwork and proportion work:
-
-- **[bts-ratio.pdf](bts/bts-ratio.pdf)**: some handwork on docuemnt ratios;
-- **[bts-sketch.pdf](bts/bts-sketch.pdf)**: some sketches of document leylines drawn with ruler.
-
-
-## Design Philosophy
-
-### Why canons?
-
-The *page canon* encodes an implicit geometry of information; by reintroducing the proportional ideals of Honnecourt, Van de Graaf, and Tufte into LaTeX, this project treats page composition as a mathematical artifact that balances the aesthetic harmony of Western Medieval and Renaissance design with the analytic control required for technical and academic documents.
-
-If you want **deterministic, reproducible** layouts from classical canons with explicit control of marginalia and gutters, and you **do not** want a full document class, use canons. If you want a comprehensive book production framework, use `memoir` or KOMA-Script; if you want a curated editorial idiom, use `tufte-book`.
-
-### Key principles
-
-1. scale-equivariant functions from page dimensions to margins;
-2. coordinate existing packages rather than replace them;
-3. margin semantics declared, not inferred;
-4. provide mechanisms, not policies.
-
-### About
-
-- **Algebraic implementations** of historical geometric constructions;
-- **Grid canon** exposes the implicit modular structure of classical canons;
-- **Margin mode semantics** `symmetric`/`antisymmetric`/`right`/`left` explicit and class-aware;
-- **Gutter philosophies** two distinct approaches (geometry; satzspiegel);
-- **Exported dimensions** downstream packages get `\marginandtext`, `\fullwidthoverhang`, etc..
-
-
-## Dependencies
-
-### canons.sty
-`geometry`, `calc`, `xparse`, `ifthen`, `etoolbox`, `pgfkeys`, `array`
-
-### canons-margins.sty
-- **Required**: `marginnote`, `marginfix`, `ifthen`, `etoolbox`, `xparse`, `kvoptions`, `xcolor`, `perpage`
-- **Optional**: `sidenotes` (integrates if present)
-
-### canons-fullwidth.sty  
-`caption`, `adjustbox`, `ifoddpage`, `changepage`, `xpatch`, `pgfkeys`, `ifthen`, `xcolor`
-
-All dependencies are available in standard TeX distributions (TeX Live, MiKTeX).
-
+- layout resolves once at `\AtBeginDocument`; `\pagecanonsetup` can adjust mid-document, but recomputation is global, not per-page or per-chapter;
+- no baseline-grid enforcement or line-spacing management;
+- incompatible with classes that manage layout internally (`memoir`, KOMA-Script, `tufte-book`); warnings are issued when such classes are detected;
+- `twocolumn` emits a warning; marginalia placement is not guaranteed;
+- for Honnecourt and Ateliers, vertical margins are expressed as fractions of $W$, coupling textblock aspect to paper aspect $H/W$;
+- in `guttermode=geometry`, large binding allowances can collapse the outer margin (warning issued); use `guttermode=satzspiegel` to preserve proportions.
 
 ## Compatibility
 
-**Supported document classes:**
-- `article`, `book`, `report` (full support);
-- `memoir`, KOMA-Script classes (warnings issued; avoid mixing layout systems);
-- Not `tufte-book`, `tufte-handout` (use their native features instead).
-
-**Integration:**
-- Works with `sidenotes` package (canons-margins patches it);
-- Compatible with standard `figure`, `table`, caption packages;
-- Coordinates with `geometry` package options.
-
+**Supported classes**: `article`; `book`; `report`;
+**Incompatible**: `memoir`; `scrbook`/`scrreprt`/`scrartcl`; `tufte-book`; `tufte-handout`;
+**Integration**: detects `sidenotes` at load and defers styling hooks to it when present; detects `ifoddpage` and uses it if already loaded.
 
 ## Contributing
 
-Contributions are welcome! Please:
+The usual good practice:
 
 1. check existing issues before opening new ones;
 2. include minimal working examples for bug reports;
-3. follow the existing code style;
-4. update documentation for new features;
-5. test with multiple document classes.
-
-
-## Future work
-
-- [ ] Additional historical canons
-- [ ] Baseline grid integration
-- [ ] Per-page canon switching
-- [ ] Advanced float positioning for fullwidth content
-- [ ] Gallery of example documents
-- [ ] Visualization macros for canon grids
-
+3. follow existing code style;
+4. update the primer for new features.
 
 ## Citation
 
-If you use these packages in academic work, please cite:
-
 ```bibtex
-@misc{canons2025,
+@misc{canons2026,
   author = {Quigley, Daniel},
-  title = {Canons: Classical Page Layout for LaTeX},
-  year = {2025},
-  url = {https://github.com/deltaquebec/canons},
-  version = {1.2},
-  note = {LPPL 1.3c}
+  title  = {Canons: classical page layout for LaTeX},
+  year   = {2026},
+  url    = {https://github.com/deltaquebec/canons},
+  version = {3.9.2},
+  note   = {LPPL 1.3c}
 }
 ```
 
-
 ## License
 
-**LaTeX Project Public License 1.3c**
-
-This work may be distributed and/or modified under the conditions of the LaTeX Project Public License, either version 1.3c of this license or (at your option) any later version.
-
+**LaTeX Project Public License 1.3c.**
 
 ## Author
 
-**Daniel Quigley**  
-[dquigleydev@gmail.com](mailto:dquigleydev@gmail.com)  
-[GitHub](https://github.com/deltaquebec)  
-[Website](https://dquigley.dev)
-
+**Daniel Quigley** — [dquigleydev@gmail.com](mailto:dquigleydev@gmail.com) · [GitHub](https://github.com/deltaquebec) · [Website](https://dquigley.dev)
 
 ## Acknowledgments
 
-This project draws conceptual inspiration from:
-
-- **Jan Tschichold**
-- **Robert Bringhurst**
-- **Edward Tufte**
-
-Special thanks to:
-- the `geometry`,`memoir`, `KOMA-script`, and `tufte-latex` package maintainers for providing solid foundations;
-- the LaTeX community for feedback and testing;
-- all contributors who have helped improve these packages.
-
+Conceptual inspiration from Jan Tschichold, Robert Bringhurst, and Edward Tufte. Thanks to the `geometry`, `memoir`, KOMA-Script, and `tufte-latex` maintainers for providing the foundations this package builds on, and to everyone who has reported bugs or suggested features.
 
 ## See also
 
-- [tufte-latex](https://github.com/Tufte-LaTeX/tufte-latex) complete Tufte document classes
-- [memoir](https://ctan.org/pkg/memoir) comprehensive book production class
-- [KOMA-Script](https://ctan.org/pkg/koma-script) European book design tradition
-- [typearea](https://ctan.org/pkg/typearea) KOMA's layout calculator
+- [tufte-latex](https://github.com/Tufte-LaTeX/tufte-latex) — complete Tufte document classes
+- [memoir](https://ctan.org/pkg/memoir) — comprehensive book production class
+- [KOMA-Script](https://ctan.org/pkg/koma-script) — european book design tradition
+- [typearea](https://ctan.org/pkg/typearea) — KOMA's layout calculator
 
 ---
 
-**Version**: 1.2.0 (core), 1.2.0 (margins), 1.2.0 (fullwidth)  
-**Last updated**: December 2025  
+**Version**: 3.9.2
+**Last updated**: April 2026
 **Status**: Active development
+
+---
