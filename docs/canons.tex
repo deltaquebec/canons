@@ -1,0 +1,1666 @@
+\DocumentMetadata{
+  lang=en-US,
+  pdfversion=2.0,
+  pdfstandard={UA-2,a-4f},
+  tagging=on,
+  tagging-setup={activate-all},
+  tagging-setup={math/setup=mathml-SE},
+  tagging-setup={math/alt/use},
+  tagging-setup={table/tagging=true},
+}
+\documentclass[11pt, twoside, openany]{book}
+\usepackage{fontspec}
+\usepackage{unicode-math}
+\usepackage[canon=vdg, margins=symmetric, paper=letterpaper, showframe]{canons}
+\usepackage{tikz}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{lipsum}
+\usepackage[
+activate={true,nocompatibility},
+final,
+tracking=true,
+factor=1100,
+stretch=10,
+shrink=10
+]{microtype}
+\DisableLigatures{encoding = *, family = *} % disable all ligatures
+\let\CheckCommand\providecommand
+\UseMicrotypeSet[protrusion]{basicmath}
+\setlength\parindent{0pt}
+\usepackage{parskip}
+\linespread{1.05}
+\usepackage{biblatex}
+\addbibresource{sources.bib}
+\usepackage{hyperref}
+\hypersetup{hidelinks}
+
+
+\newcommand{\showlen}[2]{\noindent\texttt{#1} = \the#2\par}
+\newcommand{\pkg}[1]{\textsf{#1}}
+\newcommand{\opt}[1]{\texttt{#1}}
+\newcommand{\cmd}[1]{\texttt{\textbackslash #1}}
+\newcommand{\meta}[1]{\textit{\texttt{#1}}}
+\newcommand{\dimval}[1]{\texttt{#1}}
+
+\newcommand{\testbox}[1]{%
+  \fboxsep=4pt\fboxrule=0.4pt%
+  \fbox{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{#1}}}
+
+\newcounter{testnum}
+\newcommand{\test}[1]{%
+  \stepcounter{testnum}%
+  \par\medskip\noindent
+  \textbf{Test \thetestnum: #1}\par\smallskip}
+
+\makeatletter
+
+% tagging hooks
+\newcommand*{\cns@tag@artifact@begin}{}
+\newcommand*{\cns@tag@artifact@end}{}
+\newif\ifcns@luatex
+\cns@luatexfalse
+\ifx\directlua\undefined\else \cns@luatextrue \fi
+\ifcns@luatex
+  \ExplSyntaxOn
+  \AtBeginDocument{
+    \@ifpackageloaded{tagpdf}{
+      \cs_gset:Npn \cns@tag@artifact@begin { \tag_mc_begin:n {artifact} }
+      \cs_gset:Npn \cns@tag@artifact@end   { \tag_mc_end: }
+    }{}
+  }
+  \ExplSyntaxOff
+\fi
+
+%% helpers
+\long\def\cns@ifnotempty#1{%
+  \def\cns@tmp{#1}%
+  \ifx\cns@tmp\@empty
+    \expandafter\@gobble
+  \else
+    \expandafter\@firstofone
+  \fi}
+
+%% counter (scoped to chapter if present, else section)
+\@ifundefined{chapter}%
+  {\def\cns@parent{section}}%
+  {\def\cns@parent{chapter}}
+\newcounter{EnvDefinition}[\cns@parent]
+\renewcommand{\theEnvDefinition}{%
+  \csname the\cns@parent\endcsname.\arabic{EnvDefinition}}
+
+%% shared dimensions
+\newbox\cns@box
+\newdimen\cns@boxsep  \cns@boxsep=0.9em
+\newdimen\cns@boxrule \cns@boxrule=0.4pt
+\newdimen\cns@indent  \cns@indent=2em
+
+% EnvDefinition
+\newenvironment{EnvDefinition}[1][]{%
+  \par\addvspace{0.5\baselineskip plus 2pt}%
+  \refstepcounter{EnvDefinition}%
+  \protected@edef\@currentcounter{EnvDefinition}%
+  \setbox\cns@box=\vbox\bgroup
+    \hsize=\linewidth
+    \advance\hsize -2\cns@boxsep
+    \advance\hsize -2\cns@boxrule
+    \linewidth=\hsize \columnwidth=\hsize
+    \parindent=\z@
+    \noindent\textbf{\sffamily Definition~\theEnvDefinition
+      \cns@ifnotempty{#1}{\ \mdseries\sffamily(#1)}%
+    }\strut.\par\nobreak
+    \@afterindentfalse\@afterheading
+    \leftskip=\cns@indent\relax
+    \ignorespaces
+}{%
+    \par
+  \egroup
+  \vbox{%
+    \cns@tag@artifact@begin\hrule height \cns@boxrule\cns@tag@artifact@end
+    \hbox{%
+      \cns@tag@artifact@begin\vrule width \cns@boxrule\cns@tag@artifact@end
+      \hskip\cns@boxsep
+      \vbox{\vskip\cns@boxsep \box\cns@box \vskip\cns@boxsep}%
+      \hskip\cns@boxsep
+      \cns@tag@artifact@begin\vrule width \cns@boxrule\cns@tag@artifact@end
+    }%
+    \cns@tag@artifact@begin\hrule height \cns@boxrule\cns@tag@artifact@end
+  }%
+  \par\addvspace{0.5\baselineskip plus 2pt}%
+}
+
+% TodoNote
+\newenvironment{TodoNote}[1][]{%
+  \par\addvspace{0.5\baselineskip plus 2pt}%
+  \setbox\cns@box=\vbox\bgroup
+    \hsize=\linewidth
+    \advance\hsize -10pt
+    \linewidth=\hsize \columnwidth=\hsize
+    \parindent=\z@
+    \noindent\textbf{\sffamily Note\cns@ifnotempty{#1}{ \textmd{(#1)}}.}%
+    \par\nobreak
+    \@afterindentfalse\@afterheading
+    \leftskip=\cns@indent\relax
+    \ignorespaces
+}{%
+  \par
+  \egroup
+  \vbox{\hbox{%
+    \cns@tag@artifact@begin\vrule width 4pt\cns@tag@artifact@end
+    \hskip 6pt\relax
+    \box\cns@box
+  }}%
+  \par\addvspace{0.5\baselineskip plus 2pt}%
+}
+
+% description replacement
+\newenvironment{widedesc}[1][12em]{%
+  \list{}{%
+    \labelwidth=#1\relax
+    \labelsep=0.5em\relax
+    \leftmargin=\labelwidth \advance\leftmargin\labelsep
+    \itemindent=\z@
+    \def\makelabel##1{\normalfont\bfseries ##1\hfil}%
+  }%
+}{\endlist}
+
+\makeatother
+
+
+
+
+
+
+\title{\texttt{canons.sty}\\[0.5\baselineskip]
+  \large classical-inspired page layouts with margin functionality}
+\author{Daniel Quigley}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+
+\part{Concepts}\label{part:concepts}
+
+
+\chapter{Overview}\label{chapter:overview}
+
+\pkg{canons} implements classical page-layout canons with in-house margin notes and sidenotes. Its one declared external dependency is \pkg{geometry}; all other functionality is self-contained. The package requires Lua\LaTeX.
+
+The implemented canons are:
+\begin{widedesc}[12em]
+	\item[Van de Graaf] medieval proportions; text block matches page aspect;
+	\item[Villard de Honnecourt] parametric family ($N=3,6,9,12,15$) with flexible margins;
+	\item[Tufte] asymmetric with wide outer margin for extensive notes;
+	\item[Canon des Ateliers] three styles (ordinary, neater, luxury) from French typographic tradition;
+	\item[Grid] modern $N\times N$ modular system with full control.
+\end{widedesc}
+
+\pkg{canons} offers four margin modes (\texttt{symmetric}, \texttt{antisymmetric}, \texttt{right}, \texttt{left}), gutter support with two calculation modes, a \texttt{fullwidth} environment, and exported dimensions for margin-aware content.
+
+Use \pkg{canons} when you want canonical proportions and consistent marginalia defaults without adopting a full document class. It sits above \pkg{geometry}: \pkg{canons} handles the math; \pkg{geometry}, the implementation. For end-to-end book production, use \pkg{memoir} or KOMA-Script; for a curated editorial idiom, use \pkg{tufte-book}.
+
+Part I fixes concepts; Part II is the user manual; Part III consolidates tests, edge cases, and a quick reference. All compiled pages show geometry frames (\texttt{showframe}) such that the reader can see the effect of each option directly.
+
+
+\chapter{Page canons}\label{chapter:pagecanons}
+
+\section{What a canon is}\label{sec:whatis}
+
+Page-construction canons are modern reconstructions of historical text-setting, derived from measuring surviving books and inferring the geometry used to divide a page into proportionate text areas and margins. Popularized in the 20th century by Jan Tschichold after work by J. A. van de Graaf, Raúl Rosarivo, Hans Kayser, and others, these rules still influence contemporary book design, adapted to standardized papers and diverse production needs.
+
+\emph{Canon} comes via Latin \textit{canon} `rule; standard' from Greek \textit{kan\={o}n} `straight rod; measuring rule'. The same sense underlies \textit{canon law} and the musical \textit{canon}.
+
+In practical terms, a canon takes a page's dimensions and non-arbitrarily calculates margin sizes, positions the text block on the page, maintains proportions across paper sizes, and optionally allocates space for marginalia, headers, and footers.
+
+\section{Formal definition}\label{sec:formaldef}
+
+Let $W=\cmd{paperwidth}$, $H=\cmd{paperheight}$, and $g$ be the gutter width.
+
+\begin{EnvDefinition}\label{def:pagecanon}
+	A \textbf{page canon} is a \emph{scale-equivariant} layout rule
+	\[
+		\mathcal{C} : (F,\Xi) \longrightarrow \Theta,
+	\]
+	where $F$ is a rectangular frame, $\Xi$ is an optional set of parameters and constraints, and $\Theta$ is a layout solution.
+\end{EnvDefinition}
+
+The frame is chosen from:
+\begin{itemize}
+	\item the \textbf{page frame} $P=[0,W]\times[0,H]$, whose four edges are designated \emph{inner}, \emph{outer}, \emph{top}, \emph{bottom} according to binding orientation;
+	\item the \textbf{leaf frame} with gutter $g$: for recto leaf $L_r=[g,W]\times[0,H]$; for verso leaf $L_v=[0,W-g]\times[0,H]$.
+\end{itemize}
+
+$\Xi$ may include grid divisions $N$, a baseline step, desired ratios, or style flags. $\Theta$ at minimum specifies a textblock rectangle $T\subseteq F$, equivalently given by margins $(m_i,m_o,m_t,m_b)$; it may also include footer and header bands and marginalia measures (\texttt{marginparwidth}, \texttt{marginparsep}).
+
+Scale-equivariance requires that, for any $\lambda>0$, $\mathcal{C}(\lambda F,\Xi) = \lambda\mathcal{C}(F,\Xi)$: scaling the frame scales the output proportionally. A canon must declare whether it operates on $P$ or on $L$.
+
+\section{Two presentations}\label{sec:two}
+
+The same canon admits two presentations.
+
+\begin{EnvDefinition}\label{def:parametric}
+	The \textbf{parametric (algebraic) canon} gives functions of the operative frame dimensions.
+\end{EnvDefinition}
+
+Define the operative dimensions $W_\ast$, $H_\ast$:
+\[
+	W_\ast = \begin{cases}
+	W & \mathrm{(page\,frame\, \texttt{guttermode=geometry})}\\
+	W-g & \mathrm{(leaf\,frame\, \texttt{guttermode=satzspiegel})}
+	\end{cases},
+	\qquad H_\ast = H.
+\]
+
+Margins are then
+\[
+	m_j = f_j(W_\ast,H_\ast,\Xi) \cdot \begin{cases}
+	W_\ast & \mathrm{horizontal}, \\
+	H_\ast & \mathrm{vertical},
+	\end{cases}
+\]
+where each $f_j$ is a dimensionless ratio.
+
+\begin{EnvDefinition}\label{def:constructive}
+	The \textbf{constructive (geometric) canon} specifies a procedure on $F$ (subdivide, draw diagonals, intersect lines) that yields a unique textblock $T$.
+\end{EnvDefinition}
+
+The resulting fractions are derived; they may depend on the page aspect $H/W$ and need not be `nice' rationals. The parametric form is what \pkg{canons} implements; the constructive form shows where the proportions come from and helps justify why certain relationships exist: formulas build, constructions justify.
+
+\section{Requirements}\label{sec:requirements}
+
+A canon is a rule we can test; it should behave predictably under scaling, declare the space it acts on, say where it works and what happens when it does not, produce an unambiguous textblock, and change smoothly when inputs do:
+\begin{enumerate}
+	\item all outputs scale by $\lambda>0$; units do not matter;
+	\item the canon declares its operative frame (page or leaf) and the recto/verso mapping of inner/outer;
+	\item aspect ratios and parameters for which the construction is valid are stated, with a fallback policy otherwise;
+	\item fixed inputs give a unique $T$, with no eyeball steps;
+	\item small input changes do not cause discontinuous jumps (piecewise definitions are allowed, but should be noted).
+\end{enumerate}
+
+\pkg{canons} implements canons as parametric rules, with an optional \texttt{guttermode=satzspiegel} that switches the operative frame from page $P$ to leaf $L$ by recomputing on $W_\ast=W-g$. The Honnecourt family is encoded algebraically (a constructive origin; an algebraic implementation).
+
+\section{Related work}\label{sec:related}
+
+KOMA-Script \cite{koma-script} \pkg{typearea} chooses a typeblock via \texttt{DIV}, \texttt{BCOR}, and class-level heuristics sensitive to font details; \pkg{canons} fixes canonical ratios and shims the result through \pkg{geometry}. Use KOMA for class-integrated page design; use \pkg{canons} for literal canons.
+
+\pkg{memoir} \cite{memoir} offers a comprehensive layout calculus (\cmd{settypeblocksize}, \cmd{setlrmargins}, diagnostics) and is a full publishing toolkit. For end-to-end book production, \pkg{memoir} is the right hammer; \pkg{canons} is a small wrench: canons, gutters, marginalia.
+
+\pkg{tufte-book} \cite{tufte-latex} embodies a coherent editorial idiom beyond raw geometry: wide outer margins, sidenotes, specialized floats. \pkg{canons} can mimic the broad proportions but does not implement the idiom.
+
+\begin{TodoNote}
+	Given $W,H$ and options, margins are fixed by explicit fractions without heuristics. The four margin modes place margin material predictably across \pkg{book}, \pkg{report}, and \pkg{article}. Two gutter modes (invariant textwidth; recomputed on leaf width) are available. Exported lengths (\cmd{marginandtext}, \cmd{fullwidthoverhang}, \cmd{overflowingheadlen}) make margin-aware figures, rules, and floats routine. The package inherits \pkg{geometry}'s flexibility for anything it does not explicitly cover.
+\end{TodoNote}
+
+If you already know your exact margins, \pkg{geometry} alone is simpler; if you want canonical proportions and consistent marginalia defaults, \pkg{canons} saves you from re-deriving them.
+
+\section{Limitations}\label{sec:limits}
+
+\pkg{canons} deliberately restricts itself to page geometry:
+\begin{itemize}
+	\item layout is resolved once at \cmd{AtBeginDocument}; \cmd{pagecanonsetup} can adjust mid-document, but recomputation is global, not per-page or per-chapter;
+	\item the package does not manage line spacing or enforce a baseline grid;
+	\item it is not compatible with classes that manage layout internally (\pkg{memoir}, \pkg{tufte-book}, KOMA-Script); warnings are issued if such classes are detected;
+	\item for Honnecourt and Ateliers, vertical margins are expressed as fractions of $W$ (not $H$), coupling textblock aspect to paper aspect $H/W$; a defensible but contested reading;
+	\item in \texttt{guttermode=geometry}, large binding allowances can collapse the outer margin to zero (warning issued); use \texttt{guttermode=satzspiegel} to preserve proportions;
+	\item the package only computes and applies margins; it does not style headings, floats, front matter, running heads, or captions.
+\end{itemize}
+
+
+\part{Using canons}\label{part:using}
+
+
+\chapter{Loading and compatibility}\label{chapter:loading}
+
+\section{Syntax}\label{sec:syntax}
+
+\begin{verbatim}
+\usepackage[<options>]{canons}
+\end{verbatim}
+
+Options fall into three categories: canon selection; margin and marginalia configuration; canon-specific parameters. Unrecognized options are forwarded to \pkg{geometry}.
+
+\section{Dependencies}\label{sec:dependencies}
+
+\begin{table}
+    \centering
+    \caption{Package dependencies}
+    \label{tab:packagedependencies}
+	\tagpdfsetup{table/header-rows={1}}
+	\begin{tabular}{ll}
+		\textbf{Package} & \textbf{Role}           \\
+		\hline
+		\pkg{geometry}   & page layout application \\
+	\end{tabular}
+\end{table}
+
+Odd/even page detection is implemented in-house. The package checks for \pkg{ifoddpage} at load time and uses it if already present, but does not require it.
+
+\section{Document classes}\label{sec:classes}
+
+\pkg{book} and \pkg{report} default to \texttt{margins=symmetric}. \pkg{article} defaults to \texttt{margins=right}. Warnings are issued for \pkg{memoir} and KOMA-Script classes, which manage layout internally.
+
+\section{This document's layout}\label{sec:thislayout}
+
+This primer is compiled with \texttt{canon=vdg}, \texttt{margins=symmetric}, \texttt{paper=letterpaper}, \texttt{showframe}. Exported dimensions at this point in the document:
+
+\showlen{\string\textwidth}{\textwidth}
+\showlen{\string\marginparwidth}{\marginparwidth}
+\showlen{\string\marginparsep}{\marginparsep}
+\showlen{\string\marginandtext}{\marginandtext}
+\showlen{\string\fullwidthoverhang}{\fullwidthoverhang}
+
+Margin mode: \texttt{\pagecanonmargins}.
+
+
+\chapter{The canons}\label{chapter:canons}
+
+Each canon is a rule (constructive or parametric) that maps a page or leaf rectangle and optional parameters to a textblock and margins. The default operative frame is the page (\texttt{guttermode=geometry}); if \texttt{guttermode=satzspiegel} is selected, we recompute on the leaf width $W_\ast=W-g$ before mapping back.
+
+Canon formulas use $W$ and $H$ for page dimensions. In leaf-frame mode, substitute $W_\ast = W - g$ for all $W$ in horizontal calculations; vertical calculations use $H$ unchanged. In the default page-frame mode, $W_\ast = W$ and formulas apply directly.
+
+\section{Van de Graaf (\texttt{vdg})}\label{sec:vdg}
+
+The Van de Graaf canon, named after Dutch book designer J. A. van de Graaf, reconstructs medieval manuscript proportions that appear consistently in incunabula and hand-copied texts from the 12th--16th centuries.
+
+The construction begins with the insight that the text block should maintain the same proportions as the page itself:
+\begin{enumerate}
+	\item draw both diagonals of the full page spread (verso and recto together);
+	\item draw the diagonal of a single page;
+	\item where the single-page diagonal intersects the spread diagonal determines the text block corner;
+	\item this intersection occurs at exactly $1/9$ of the page width and height.
+\end{enumerate}
+
+The $1/9$ fractions are the outcome of the diagonal construction under the usual single-page-within-spread setup; other historical reconstructions exist. The construction is primary; the fractions, derived. Our implementation codifies the fractions.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[alt={A representation of leylines along a page spread resulting in Van de Graaf canon},scale=0.5]
+		\draw[ultra thick] (0,0) rectangle ++(17,11);
+		\draw (8.5,-0.5) -- (8.5,11.5);
+		\draw[ultra thin] (0,0) -- (17,11);
+		\draw[ultra thin] (0,11) -- (17,0);
+		\draw[ultra thin] (0,0) -- (8.5,11);
+		\draw[ultra thin] (17,0) -- (8.5,11);
+		\draw[ultra thin] (11.333,7.333) -- (11.333,11);
+		\draw[ultra thin] (5.667,7.333) -- (11.333,11);
+		\draw[ultra thin] (5.667,7.333) -- (5.667,11);
+		\draw[ultra thin] (11.333,7.333) -- (5.667,11);
+		\draw[ultra thick] (9.44,9.78) -- (15.11,9.78);
+		\draw[ultra thick] (15.11,9.78) -- (15.11,2.45);
+		\draw[ultra thick] (15.11,2.45) -- (9.44,2.45);
+		\draw[ultra thick] (9.44,2.45) --  (9.44,9.78);
+		\draw[ultra thick] (7.56,9.78) -- (1.89,9.78);
+		\draw[ultra thick] (1.89,9.78) -- (1.89,2.45);
+		\draw[ultra thick] (1.89,2.45) -- (7.56,2.45);
+		\draw[ultra thick] (7.56,2.45) --  (7.56,9.78);
+	\end{tikzpicture}
+	\caption{Van de Graaf canon; textarea shown with spread.}
+	\label{fig:vdg}
+\end{figure}
+
+For a page of width $W$ and height $H$:
+\[
+	m_i = W/9,\quad m_o = 2W/9,\quad m_t = H/9,\quad m_b = 2H/9,
+\]
+yielding $\cmd{textwidth} = \tfrac{2}{3}W$ and $\cmd{textheight} = \tfrac{2}{3}H$. Marginalia allocation: $\texttt{marginparwidth} \approx 8W/45$, $\texttt{marginparsep} \approx W/45$. Footer: $\texttt{footskip} = \tfrac{1}{2}m_b$.
+
+\section{Villard de Honnecourt (\texttt{vdh})}\label{sec:vdh}
+
+Villard de Honnecourt was a 13th-century French architect whose sketchbook contains about 250 highly precise drawings, 74 of which are architectural; the remainder span naturalism, allegory, scenes, animals, and machines. His \textit{canon de division harmonieuse} uses recursive subdivision of the page, creating a parametric family of layouts based on $N$-fold divisions.
+
+Define $u = W/(N+3)$. Then
+\[
+	m_i = u,\quad m_o = 2u,\quad m_t = \tfrac{3}{2}u,\quad m_b = 3u,
+\]
+so $\cmd{textwidth} = \tfrac{N}{N+3}W$ and $\cmd{textheight} = H - \tfrac{9}{2}\tfrac{W}{N+3}$.
+
+Because vertical margins depend on $W$, the block aspect varies with $H/W$.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[alt={A representation of leylines along a page spread resulting in Honnecourt canon},scale=0.5]
+		\draw[ultra thick] (0,0) rectangle ++(17,11);
+		\draw (8.5,-0.5) -- (8.5,11.5);
+		\draw[ultra thin] (0,0) -- (17,11);
+		\draw[ultra thin] (0,11) -- (17,0);
+		\draw[ultra thin] (0,0) -- (8.5,11);
+		\draw[ultra thin] (17,0) -- (8.5,11);
+		% N=15
+		\draw[ultra thin] (8.98, 10.38) -- (8.02, 10.38);
+		\draw[ultra thin] (8.98, 10.38) -- (8.98,11);
+		\draw[ultra thin] (8.02, 10.38) -- (8.02,11);
+		\draw[ultra thin] (9.07, 10.26) -- (7.93,10.26);
+		\draw[ultra thin] (8.5,10.26) -- (11.333,11);
+		\draw[ultra thin] (8.5,10.26) -- (5.667,11);
+		\draw[ultra thick] (8.98, 10.38) -- (16.04,10.38);
+		\draw[ultra thick] (16.04,10.38) -- (16.04,1.24);
+		\draw[ultra thick] (16.04,1.24) -- (8.98,1.24);
+		\draw[ultra thick] (8.98,1.24) -- (8.98, 10.38);
+		% N=12
+		\draw[ultra thin] (9.07, 10.26) -- (9.07,11);
+		\draw[ultra thin] (7.93, 10.26) -- (7.93,11);
+		\draw[ultra thin] (9.21, 10.08) -- (7.79,10.08);
+		\draw[ultra thin] (8.5,10.08) -- (11.333,11);
+		\draw[ultra thin] (8.5,10.08) -- (5.667,11);
+		\draw[ultra thick] (9.07, 10.26) -- (15.86,10.26);
+		\draw[ultra thick] (15.86,10.26) -- (15.86,1.48);
+		\draw[ultra thick] (15.86,1.48) -- (9.07,1.48);
+		\draw[ultra thick] (9.07,1.48) -- (9.07, 10.26);
+		% N=9
+		\draw[ultra thin] (9.21, 10.08) -- (9.21,11);
+		\draw[ultra thin] (7.79, 10.08) -- (7.79,11);
+		\draw[ultra thin] (9.44, 9.78) -- (7.56,9.78);
+		\draw[ultra thin] (8.5,9.78) -- (11.333,11);
+		\draw[ultra thin] (8.5,9.78) -- (5.667,11);
+		\draw[ultra thick] (9.21, 10.08) -- (15.58,10.08);
+		\draw[ultra thick] (15.58,10.08) -- (15.58, 1.84);
+		\draw[ultra thick] (15.58, 1.84) -- (9.21, 1.84);
+		\draw[ultra thick] (9.21, 1.84) -- (9.21, 10.08);
+		% N=6
+		\draw[ultra thin] (9.44, 9.78) -- (9.44,11);
+		\draw[ultra thin] (7.56, 9.78) -- (7.56,11);
+		\draw[ultra thin] (9.92, 9.17) -- (7.08,9.17);
+		\draw[ultra thin] (8.5,9.17) -- (11.333,11);
+		\draw[ultra thin] (8.5,9.17) -- (5.667,11);
+		\draw[ultra thick] (9.44, 9.78) -- (15.11,9.78);
+		\draw[ultra thick] (15.11,9.78) -- (15.11,2.45);
+		\draw[ultra thick] (15.11,2.45) -- (9.44,2.45);
+		\draw[ultra thick] (9.44,2.45) -- (9.44, 9.78);
+		% N=3
+		\draw[ultra thin] (11.333,7.333) -- (11.333,11);
+		\draw[ultra thin] (5.667,7.333) -- (5.667,11);
+		\draw[ultra thin] (9.92, 9.17) -- (9.92,11);
+		\draw[ultra thin] (7.08, 9.17) -- (7.08,11);
+		\draw[ultra thin] (11.333,7.333) -- (5.667,7.333);
+		\draw[ultra thin] (8.5,7.333) -- (11.333,11);
+		\draw[ultra thin] (8.5,7.333) -- (5.667,11);
+		\draw[ultra thick] (9.92, 9.17) -- (14.17,9.17);
+		\draw[ultra thick] (14.17,9.17) -- (14.17,3.66);
+		\draw[ultra thick] (14.17,3.66) -- (9.92,3.66);
+		\draw[ultra thick] (9.92,3.66) -- (9.92, 9.17);
+	\end{tikzpicture}
+	\caption{Honnecourt canon, textareas drawn for each $N$; shown with spread.}
+	\label{fig:vdh}
+\end{figure}
+
+Configurations are given in Table~\ref{tab:vdhconfig}. Exact recovery on an integer grid occurs only for special paper aspects.
+
+\begin{table}[h]
+	\centering
+	\caption{Honnecourt configurations.}
+	\label{tab:vdhconfig}
+	\tagpdfsetup{table/header-rows={1}}
+	\begin{tabular}{@{}llllll@{}}
+		\toprule
+		$N$ & \bfseries Inner & \bfseries Outer & \bfseries Top & \bfseries Bottom & \bfseries Margin space \\
+		\midrule
+		3   & $W/6$           & $W/3$           & $W/4$         & $W/2$            & generous               \\
+		6   & $W/9$           & $2W/9$          & $W/6$         & $W/3$            & classic                \\
+		9   & $W/12$          & $W/6$           & $W/8$         & $W/4$            & moderate               \\
+		12  & $W/15$          & $2W/15$         & $W/10$        & $W/5$            & economic               \\
+		15  & $W/18$          & $W/9$           & $W/12$        & $W/6$            & compact                \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{TodoNote}
+	With $N=3$, division into six reproduces the method Tschichold identifies as Marcus Vencentinus's 15th-century prayer-book scheme. The Honnecourt family subsumes it via parameter choice.
+\end{TodoNote}
+
+\section{Tufte (\texttt{tufte})}\label{sec:tufte}
+
+Edward Tufte's page design \cite{tufte2001visual,tufte1990envisioning,tufte1997visual,tufte2006beautiful,tufte2020seeing} prioritizes generous margins for annotations, figures, and marginalia: wide margins accommodate figures without interrupting text flow; multiple information streams coexist; deliberate asymmetry creates dynamic tension; margins invite reader participation.
+
+This is an algebraic house-style, not a medieval geometric canon; the fractions below are abstracted from Tufte-style layouts.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[alt={A representation of measured spaces on a page spread resulting in Tufte canon},scale=0.5]
+		\draw[ultra thick] (0,0) rectangle ++(17,11);
+		\draw (8.5,-0.5) -- (8.5,11.5);
+		\draw[ultra thin] (9.5,0) -- (9.5,11);
+		\draw[ultra thin] (0,1.5) -- (17,1.5);
+		\draw[ultra thin] (0,10) -- (17,10);
+		\draw[ultra thin] (13.83,0) -- (13.83,11);
+		\draw[ultra thin] (1,0) -- (1,11);
+		\draw[ultra thin] (5.33,0) -- (5.33,11);
+		\draw[ultra thick] (9.5,1.5) -- (9.5,10);
+		\draw[ultra thick] (9.5,10) -- (13.83,10);
+		\draw[ultra thick] (13.83,10) -- (13.83,1.5);
+		\draw[ultra thick] (9.5,1.5) -- (13.83,1.5);
+		\draw[ultra thick] (1,0) -- (1,10);
+		\draw[ultra thick] (1,10) -- (5.33,10);
+		\draw[ultra thick] (5.33,10) -- (5.33,1.5);
+		\draw[ultra thick] (1,1.5) -- (5.33,1.5);
+	\end{tikzpicture}
+	\caption{Tufte canon; textareas shown with spread.}
+	\label{fig:tufte}
+\end{figure}
+
+The ratios are derived directly from the \pkg{tufte-latex} document classes on letterpaper:
+\begin{itemize}
+	\item inner margin: $W/8.5 \approx 0.1176\,W$;
+	\item outer margin: $\approx 0.372941\,W$ (empirical from \pkg{tufte-latex} on letterpaper; not exactly $3/8$);
+	\item top: $H/11 \approx 0.0909\,H$;
+	\item bottom: $3H/22 \approx 0.1364\,H$;
+	\item textwidth: $\approx 0.509\,W$;
+	\item marginparwidth: $4W/17 \approx 0.235\,W$;
+	\item marginparsep: $W/26 \approx 0.038\,W$.
+\end{itemize}
+
+The layout exhibits strong asymmetry with extensive annotation space.
+
+\section{Canon des Ateliers (\texttt{ateliers})}\label{sec:ateliers}
+
+The \textit{canon des ateliers} (`workshop canon') follows from French printing tradition. It supplies three distinct styles:
+\begin{enumerate}
+	\item \textbf{ordinary} (\textit{ordinaire}) maximizes text area while maintaining readability; educational texts and technical manuals;
+	\item \textbf{neater} (\textit{plus soigné}) balanced aesthetic for literary works; increased margins for readability;
+	\item \textbf{luxury} (\textit{luxe}) generous margins for prestigious editions; maximum annotation space.
+\end{enumerate}
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[alt={A representation of measured spaces on a page spread resulting in canon des ateliers},scale=0.5]
+		\draw[ultra thick] (0,0) rectangle ++(17,11);
+		\draw (8.5,-0.5) -- (8.5,11.5);
+		% ordinary
+		\draw[ultra thin] (9.35,0) -- (9.35,11);
+		\draw[ultra thin] (15.725,0) -- (15.725,11);
+		\draw[ultra thin] (0,9.9375) -- (17,9.9375);
+		\draw[ultra thin] (0,1.4875) -- (17,1.4875);
+		\draw[ultra thick] (9.35,1.4875) -- (15.725,1.4875);
+		\draw[ultra thick] (15.725,1.4875) -- (15.725,9.9375);
+		\draw[ultra thick] (15.725,9.9375) -- (9.35,9.9375);
+		\draw[ultra thick] (9.35,9.9375) -- (9.35,1.4875);
+		% neater
+		\draw[ultra thin] (9.6333,0) -- (9.6333,11);
+		\draw[ultra thin] (15.3,0) -- (15.3,11);
+		\draw[ultra thin] (0,9.5833) -- (17,9.5833);
+		\draw[ultra thin] (0,1.9833) -- (17,1.9833);
+		\draw[ultra thick] (9.6333,1.9833) -- (15.3,1.9833);
+		\draw[ultra thick] (15.3,1.9833) -- (15.3,9.5833);
+		\draw[ultra thick] (15.3,9.5833) -- (9.6333,9.5833);
+		\draw[ultra thick] (9.6333,9.5833) -- (9.6333,1.9833);
+		% luxury
+		\draw[ultra thin] (9.775,0) -- (9.775,11);
+		\draw[ultra thin] (15.0875,0) -- (15.0875,11);
+		\draw[ultra thin] (0,9.40625) -- (17,9.40625);
+		\draw[ultra thin] (0,2.23125) -- (17,2.23125);
+		\draw[ultra thick] (9.775,2.23125) -- (15.0875,2.23125);
+		\draw[ultra thick] (15.0875,2.23125) -- (15.0875,9.40625);
+		\draw[ultra thick] (15.0875,9.40625) -- (9.775,9.40625);
+		\draw[ultra thick] (9.775,9.40625) -- (9.775,2.23125);
+		% mirrors
+		\draw[ultra thin] (7.65,0) -- (7.65,11);
+		\draw[ultra thin] (1.275,0) -- (1.275,11);
+		\draw[ultra thin] (7.3667,0) -- (7.3667,11);
+		\draw[ultra thin] (1.7,0) -- (1.7,11);
+		\draw[ultra thin] (7.225,0) -- (7.225,11);
+		\draw[ultra thin] (1.9125,0) -- (1.9125,11);
+	\end{tikzpicture}
+	\caption{\textit{Canon des ateliers}; textareas drawn for each style; shown with spread.}
+	\label{fig:ateliers}
+\end{figure}
+
+Textwidth is set first:
+\[
+	\texttt{textwidth} =
+	\begin{cases}
+		\tfrac{3}{4}W & \mathrm{(ordinary)}, \\
+		\tfrac{2}{3}W & \mathrm{(neater)},   \\
+		\tfrac{5}{8}W & \mathrm{(luxury)}.   
+	\end{cases}
+\]
+The remaining whitespace $w = W - \texttt{textwidth}$ is then distributed: $m_i = 0.4w$, $m_o = 0.6w$, $m_t = 0.5w$, $m_b = 0.7w$.
+
+The three-tiered system reflects material and economic realities of printing; subject matter, print runs, and material costs determined the style. Luxury editions could afford more white space; higher sale price offset the cost of paper. Better bindings (particularly sewn bindings for luxury editions) accommodated wider inner margins without compromising visibility at the spine; cheaper bindings required narrower inner margins.
+
+\section{Grid (\texttt{grid})}\label{sec:grid}
+
+The Grid canon is a modern, systematic approach based on modular design popularized by the Swiss International Style. Unlike historical canons, it offers complete parametric control while maintaining modular discipline.
+
+The page is divided into an $N \times N$ grid. For some $N \geq 3$, let $c_w = W_\ast/N$, $c_h = H/N$. Choose integer cell counts $(L,R,T,B)$ with $L+R < N$ and $T+B < N$. Set
+\[
+	m_i = Lc_w,\quad m_o = Rc_w,\quad m_t = Tc_h,\quad m_b = Bc_h.
+\]
+The text block is
+\[
+	\cmd{textwidth} = (N-L-R)c_w,\qquad \cmd{textheight} = (N-T-B)c_h.
+\]
+The text-area fraction (relative to the operative frame $W_\ast \times H$) is
+\[
+	\frac{\cmd{textwidth}}{W_\ast}\cdot\frac{\cmd{textheight}}{H}
+	= \Bigl(1-\frac{L+R}{N}\Bigr)\Bigl(1-\frac{T+B}{N}\Bigr),
+\]
+and the text-block aspect is
+\[
+	\frac{\cmd{textheight}}{\cmd{textwidth}}
+	= \frac{N-T-B}{N-L-R}\cdot\frac{H}{W_\ast}.
+\]
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[alt={A representation of grid on a page spread resulting in grid canon},scale=0.5]
+		\draw[ultra thick] (0,0) rectangle ++(17,11);
+		\draw (8.5,-0.5) -- (8.5,11.5);
+		\foreach \x in {0, 0.9444, 1.8888, 2.8332, 3.7776, 4.722, 5.6664, 6.6108, 7.5552, 8.4996, 9.444, 10.3884, 11.3328, 12.2772, 13.2216, 14.166, 15.1104, 16.0548, 16.9992} {
+			\draw[ultra thin] (\x,0) -- (\x,11);
+		}
+		\foreach \x in {0, 1.2222, 2.4444, 3.6666, 4.8888, 6.111, 7.3332, 8.5554, 9.7776, 10.9998} {
+			\draw[ultra thin] (0,\x) -- (17,\x);
+		}
+		\draw[ultra thick] (9.444,2.4444) -- (15.1104,2.4444);
+		\draw[ultra thick] (15.1104,2.4444) -- (15.1104,9.7776);
+		\draw[ultra thick] (15.1104,9.7776) -- (9.444,9.7776);
+		\draw[ultra thick] (9.444,9.7776) -- (9.444,2.4444);
+		\draw[ultra thick] (7.5552,2.4444) -- (1.8888,2.4444);
+		\draw[ultra thick] (1.8888,2.4444) -- (1.8888,9.7776);
+		\draw[ultra thick] (1.8888,9.7776) -- (7.5552,9.7776);
+		\draw[ultra thick] (7.5552,9.7776) -- (7.5552,2.4444);
+	\end{tikzpicture}
+	\caption{Grid canon for $N=9$; textarea shown with spread.}
+	\label{fig:grid}
+\end{figure}
+
+Grid verticals are multiples of $H/N$, \emph{not} fractions of $W$; therefore, the block aspect depends on both $H/W$ and the chosen cell counts. Parameters and defaults are given in Table~\ref{tab:params}.
+
+\begin{table}[h]
+	\centering
+	\caption{Grid canon parameters (*clamped to 1 when $N=3$).}
+	\label{tab:params}
+	\tagpdfsetup{table/header-rows={1}}
+	\begin{tabular}{@{}llll@{}}
+		\toprule
+		\bfseries Parameter & \bfseries Default & \bfseries Range & \bfseries Description         \\
+		\midrule
+		\texttt{gridN}      & 6                 & $\geq 3$        & grid divisions ($N \times N$) \\
+		\texttt{gridinner}  & 1                 & $< N$           & inner margin cells            \\
+		\texttt{gridouter}  & 2*                & $< N$           & outer margin cells            \\
+		\texttt{gridtop}    & 1                 & $< N$           & top margin cells              \\
+		\texttt{gridbottom} & 2*                & $< N$           & bottom margin cells           \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Useful configurations appear in Table~\ref{tab:useful}.
+
+\begin{table}[h]
+	\centering
+	\caption{Common grid configurations.}
+	\label{tab:useful}
+	\tagpdfsetup{table/header-rows={1}}
+	\begin{tabular}{@{}lccccc l@{}}
+		\toprule
+		\bfseries Style & $N$ & \bfseries Inner & \bfseries Outer & \bfseries Top & \bfseries Bottom & \bfseries Description \\
+		\midrule
+		minimal         & 3   & 1               & 1               & 1             & 1                & maximum text area     \\
+		classic         & 6   & 1               & 2               & 1             & 2                & balanced proportions  \\
+		editorial       & 8   & 1               & 3               & 1             & 2                & wide margin notes     \\
+		technical       & 12  & 1               & 2               & 2             & 3                & documentation layout  \\
+		dense           & 12  & 1               & 1               & 1             & 2                & maximized content     \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\section{Disabled (\texttt{canon=false})}\label{sec:false}
+
+Bypasses all canon calculations. \pkg{geometry} controls layout via its own defaults or any forwarded options. The \texttt{margins} key still applies (\texttt{reversemarginpar} or \texttt{asymmetric} where relevant).
+
+
+\chapter{Canon relationships}\label{chapter:relationships}
+
+Historical canons encode specific aesthetic judgments about proportion. The Grid canon provides a framework for systematic decision-making and can reproduce some historical relationships exactly, approximate others, and create new ones.
+
+\section{Grid as a superset}\label{sec:superset}
+
+\begin{table}[h]
+	\centering
+	\caption{Classical canons and Grid compared.}
+    \label{tab:superset}
+	\tagpdfsetup{table/header-rows={1}}
+	\begin{tabular}{@{}lccc@{}}
+		\toprule
+		\bfseries Canon & \bfseries Computation & \bfseries Parameters & \bfseries Flexibility \\
+		\midrule
+		Van de Graaf    & fixed fractions       & 0                    & none                  \\
+		Villard         & formula with $N$      & 1 ($N$)              & discrete (5)          \\
+		Ateliers        & whitespace split      & 1 (style)            & discrete (3)          \\
+		Grid            & cell counting         & 5 ($N$ + 4)          & continuous            \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{TodoNote}
+	Van de Graaf is effectively a $9 \times 9$ grid with fixed allocations: $m_i/W_\ast=1/9$, $m_o/W_\ast=2/9$, $m_t/H=1/9$, $m_b/H=2/9$. The Grid canon recovers Van de Graaf exactly when $N$ is a multiple of $9$ and $(L,R,T,B) = (N/9, 2N/9, N/9, 2N/9)$. If $N$ is not divisible by $9$, the result is a best rational approximation in steps of $1/N$.
+\end{TodoNote}
+
+\begin{table}[h]
+	\centering
+	\caption{Van de Graaf canon and Grid compared.}
+	\label{tab:vdggrid}
+	\tagpdfsetup{table/header-rows={1}}
+	\begin{tabular}{@{}lccc@{}}
+		\toprule
+		\bfseries Aspect & \bfseries Van de Graaf  & \bfseries Grid equivalent & \bfseries Grid notation \\
+		\midrule
+		division         & $9 \times 9$ (implicit) & $9 \times 9$ (explicit)   & \texttt{gridN=9}        \\
+		inner margin     & $W_\ast/9$ (fixed)      & 1 cell                    & \texttt{gridinner=1}    \\
+		outer margin     & $2W_\ast/9$ (fixed)     & 2 cells                   & \texttt{gridouter=2}    \\
+		top margin       & $H/9$ (fixed)           & 1 cell                    & \texttt{gridtop=1}      \\
+		bottom margin    & $2H/9$ (fixed)          & 2 cells                   & \texttt{gridbottom=2}   \\
+		text block       & $6 \times 6$ cells      & $6 \times 6$ cells        & computed                \\
+		user control     & none                    & full                      & all parameters          \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+To reproduce Van de Graaf with Grid:
+\begin{fullwidth}
+	\begin{verbatim}
+\usepackage[canon=grid, gridN=9, gridinner=1, gridouter=2, gridtop=1, gridbottom=2]{canons}
+	\end{verbatim}
+\end{fullwidth}
+
+Grid admits variations Van de Graaf does not, e.g.:
+\begin{verbatim}
+% same 9x9 grid, but 1:3 horizontal ratio instead of 1:2
+\usepackage[canon=grid, gridN=9, gridinner=1, gridouter=3]{canons}
+\end{verbatim}
+
+\begin{TodoNote}
+	Our Honnecourt family sets verticals as fractions of $W$: $m_t = \tfrac{3}{2}u$, $m_b = 3u$ with $u = W/(N+3)$. Grid fixes verticals in steps of $H/N$. Exact equality would require
+	\[
+		T = \frac{3N}{2(N+3)}\cdot \frac{W}{H},\qquad
+		B = \frac{3N}{N+3}\cdot \frac{W}{H},
+	\]
+	which are rarely integers unless the paper aspect is specially tuned. Grid $\to$ Honnecourt is therefore generally an approximation, good for large $N$.
+\end{TodoNote}
+
+\begin{TodoNote}
+	Ateliers distributes a fixed whitespace fraction by ratios $0.4:0.6:0.5:0.7$. Integer cell counts cannot reproduce these exactly; choose large $N$ and round.
+	
+\end{TodoNote}
+
+\begin{table}[h]
+	\centering
+	\caption{Non-integer values ($^{*}$) mark where Grid cannot exactly reproduce Ateliers.}
+	\label{tab:todonote}
+	\tagpdfsetup{table/header-rows={1}}
+	\begin{tabular}{@{}lcccc@{}}
+		\toprule
+		\bfseries Style & \bfseries Text width & \bfseries Whitespace & \bfseries Distribution & \bfseries Grid approximation              \\
+		\midrule
+		ordinary        & $75\%$               & $25\%$               & $0.4:0.6:0.5:0.7$      & $N=20$, cells $2:3:2.5^{*}:3.5^{*}$       \\
+		neater          & $66.7\%$             & $33.3\%$             & $0.4:0.6:0.5:0.7$      & $N=15$, cells $2:3:2.5^{*}:3.5^{*}$       \\
+		luxury          & $62.5\%$             & $37.5\%$             & $0.4:0.6:0.5:0.7$      & $N=16$, cells $2.4^{*}:3.6^{*}:3:4.2^{*}$ \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+Grid can reproduce exactly:
+
+\begin{itemize}
+	\item Van de Graaf with $N=9$, margins $1:2:1:2$;
+	\item simple ratios like $1:2$, $1:3$, $2:3$.
+\end{itemize}
+
+It can approximate:
+
+\begin{itemize}
+	\item Honnecourt's $1.5:3$ vertical ratio (needs $N=6k$ for a $k:2k$ approximation);
+	\item Ateliers' $0.4:0.6$ split (needs large $N$).
+\end{itemize}
+
+It can express novel configurations: asymmetric layouts (e.g., $1:4:2:1$), golden-ratio approximations with appropriate $N$, Fibonacci margins.
+
+\chapter{Margin modes}\label{chapter:marginmodes}
+
+The \texttt{margins} key controls how inner/outer asymmetry is applied and which side receives marginalia. All four modes compose with any canon.
+
+\section{\texttt{symmetric} (default for book/report)}\label{sec:symmetric}
+
+Standard two-sided layout. Marginalia appear in the outer margin. Fullwidth content extends into the outer margin and shifts direction on verso pages.
+
+\section{\texttt{antisymmetric}}\label{sec:antisymmetric}
+
+Two-sided layout with marginalia on the \emph{inner} (spine-side) margin. Unusual; useful where annotations face the gutter in spread view.
+
+\section{\texttt{right}}\label{sec:right}
+
+Single-sided. Every page has the wider margin on the right. Default for \pkg{article}.
+
+\section{\texttt{left}}\label{sec:left}
+
+Single-sided. Every page has the wider margin on the left.
+
+\section{Geometry flags}\label{sec:geometryflags}
+
+Each mode maps to \pkg{geometry} as follows:
+
+\begin{table}[h]
+	\centering
+	\caption{Margin-mode placement}
+	\label{tab:marginplacement}
+	\tagpdfsetup{table/header-rows={1}}
+	\begin{tabular}{@{}lll@{}}
+		\toprule
+		\bfseries Mode         & \bfseries Geometry flags  & \bfseries Effect               \\
+		\midrule
+		\texttt{symmetric}     & (default)                 & two-sided; notes on outer edge \\
+		\texttt{antisymmetric} & \texttt{reversemarginpar} & two-sided; notes on inner edge \\
+		\texttt{right}         & \texttt{asymmetric}       & one-sided; notes on right      \\
+		\texttt{left}          & \texttt{asymmetric}       & one-sided; notes on left       \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+
+\chapter{Gutters}\label{chapter:gutters}
+
+The \texttt{gutterval} key adds binding allowance. Two application modes are available via \texttt{guttermode}.
+
+\section{\texttt{geometry} (default)}\label{sec:guttergeometry}
+
+Adds the gutter to the inner margin and subtracts it from the outer margin, preserving page width but shifting the text block toward the outer edge. Since $\cmd{textwidth} = W - (m_i + m_o)$ and the change is $+g$ inner, $-g$ outer, the sum is unchanged.
+
+Caveat: large binding allowances can collapse the outer margin to zero (warning issued).
+
+\section{\texttt{satzspiegel}}\label{sec:guttersatzspiegel}
+
+Reduces the effective leaf width to $W_\ast = W - g$ before computing the canon, then adds the gutter back to the inner margin. This shrinks the text block rather than stealing from the outer margin: $\Delta\cmd{textwidth} = -\alpha\,g$ with $\alpha = \tfrac{2}{3}$ (vdg), $\tfrac{N}{N+3}$ (vdh), $\approx 0.509412$ (tufte), $k$ (ateliers), or $\tfrac{N-L-R}{N}$ (grid).
+
+
+\chapter{Marginalia}\label{chapter:marginalia}
+
+\pkg{canons} provides margin notes and sidenotes with in-house collision avoidance, font isolation, and position-aware placement. Implementation writes position labels to the \texttt{.aux} file on the first pass and reads them on the second; \textbf{two compilation passes are required} for accurate vertical positioning. On the first pass, notes appear at the call-site baseline without collision adjustment.
+
+Margin notes always land in the outer margin, following the current margin mode. On two-sided symmetric documents, the outer margin alternates sides.
+
+\section{Margin notes}\label{sec:marginnotes}
+
+The functionality of margin notes follows from \cite{marginnote}.
+
+\subsection{Syntax}\label{subsec:marginnotessyntax}
+
+\begin{verbatim}
+\marginnote{text}            % auto-positioned, collision-aware
+\marginnote{text}[2cm]       % shifted 2cm below call-site baseline
+\marginnote{text}[-1cm]      % shifted 1cm above call-site baseline
+\end{verbatim}
+
+The optional \texttt{voffset} is \emph{additive} to the collision accumulator. A note that would already be pushed down by collision avoidance is pushed further by a positive offset.
+
+\subsection{Font isolation}\label{subsec:marginnotesfont}
+
+Margin notes always typeset in upright, medium-weight roman regardless of the call-site font; this is enforced by \cmd{normalfont} prepended before \cmd{marginfont} in the content builder. A margin note inside italic or bold body text does not inherit the variant.
+
+\subsection{Collision avoidance}\label{subsec:marginnotescollision}
+
+Adjacent notes on the same page accumulate vertically. If the notes exceed the available margin depth they overflow the page foot; no silent truncation occurs.
+
+\section{Sidenotes}\label{sec:sidenotes}
+
+Sidenotes are numbered annotations: a mark appears inline in the body, and the note text appears in the outer margin at the corresponding vertical position. The functionality of side notes follows from \cite{sidenotes}.
+
+\subsection{Syntax}\label{subsec:sidenotessyntax}
+
+\begin{verbatim}
+\sidenote{text}               % auto-number, auto-position
+\sidenote{text}[2cm]          % auto-number, shifted 2cm down
+\sidenote[3]{text}            % explicit number 3, auto-position
+\sidenote[3]{text}[-1cm]      % explicit number, shifted up
+
+\sidenotemark                 % place mark only (steps counter)
+\sidenotemark[3]              % place mark with explicit number
+\sidenotetext{text}           % place note text (does not step counter)
+\sidenotetext{text}[1cm]      % place note text, shifted down
+\end{verbatim}
+
+The optional leading \texttt{[num]} overrides the sidenote counter. The optional trailing \texttt{[voffset]} shifts the note from the call-site baseline; it is additive to collision avoidance, identical in mechanics to \cmd{marginnote}'s offset.
+
+\subsection{Separated mark and text}\label{subsec:sidenotesmark}
+
+Use \cmd{sidenotemark} and \cmd{sidenotetext} when the mark and the note body need to appear at different call sites, for instance when the mark must land inside an environment incompatible with \cmd{vadjust} such as \texttt{tabular}.
+
+\subsection{Mark formatting hooks}\label{subsec:sidenotesmarkhooks}
+
+Two commands control rendering:
+\begin{verbatim}
+\canonssidenotemarkformat{num}   % inline mark (default: superscript)
+\canonssidenotelabelformat{num}  % margin label (default: superscript + thin space)
+\end{verbatim}
+
+Redefine to change mark style document-wide:
+\begin{verbatim}
+\renewcommand*{\canonssidenotemarkformat}[1]{$^{#1}$}
+\renewcommand*{\canonssidenotelabelformat}[1]{\textbf{#1}\enspace}
+\end{verbatim}
+
+\subsection{Numbering modes}\label{subsec:sidenotesnumbering}
+
+The \texttt{numbering} key controls counter resets. Set at load time via the package option or in the preamble via \cmd{pagecanonsetup}.
+
+\begin{table}[h]
+	\centering
+	\caption{Numbering options}
+	\label{tab:numopts}
+	\tagpdfsetup{table/header-rows={1}}
+	\begin{tabular}{ll}
+		\textbf{Value}            & \textbf{Behavior}                              \\
+		\hline
+		\texttt{global} (default) & one counter for the entire document            \\
+		\texttt{persection}       & reset at each \cmd{section}                    \\
+		\texttt{perchapter}       & reset at each \cmd{chapter} (book/report only) \\
+		\texttt{perpage}          & reset at each page (requires two passes)       \\
+	\end{tabular}
+\end{table}
+
+\section{Shared configuration}\label{sec:shared}
+
+Size, line spread, and justification apply to both margin notes and sidenotes via unified keys; split keys override the unified setting.
+
+\begin{table}[h]
+	\centering
+	\caption{Shared options}
+	\label{tab:sharedopts}
+	\tagpdfsetup{table/header-rows={1}}
+	\begin{tabular}{ll}
+		\textbf{Unified}        & \textbf{Split overrides}                                                                   \\
+		\hline
+		\texttt{size=}          & \texttt{marginnotesize=}, \texttt{sidenotesize=} (with \texttt{marginsize=false})          \\
+		\texttt{justification=} & \texttt{marginnotejustify=}, \texttt{sidenotejustify=} (with \texttt{marginjustify=false}) \\
+		\texttt{notespread=}    & (no split)                                                                                 \\
+	\end{tabular}
+\end{table}
+
+Changes via \cmd{pagecanonsetup} take effect immediately on the next note call; no page break is triggered because the underlying macros are evaluated at typesetting time.
+
+
+\chapter{Fullwidth and captions}\label{chapter:fullwidth}
+
+\section{The \texttt{fullwidth} environment}\label{sec:fullwidth}
+
+\begin{verbatim}
+\begin{fullwidth}[skip=<dim>, justification=<value>]
+  <content>
+\end{fullwidth}
+\end{verbatim}
+
+Extends content into the outer margin by setting a minipage of width $\cmd{linewidth} + \cmd{fullwidthoverhang}$. Does not float, does not break across pages. Inside the environment, \cmd{linewidth} gives the full container width; \cmd{textwidth} is reset to the minipage width.
+
+Options:
+\begin{table}[h]
+	\centering
+	\caption{Fullwidth options}
+	\label{tab:fullopts}
+	\tagpdfsetup{table/header-rows={1}}
+	\begin{tabular}{lll}
+		\textbf{Key}  & \textbf{Values} & \textbf{Default}               \\
+		\hline
+		\texttt{skip} & dimension       & \texttt{0.5\cmd{baselineskip}} \\
+		\texttt{justification} & \texttt{centering}, \texttt{raggedright},
+		\texttt{raggedleft}, \texttt{justified}
+		& \texttt{centering} \\
+	\end{tabular}
+\end{table}
+
+\section{Captions inside fullwidth}\label{sec:captions}
+
+Inside \texttt{fullwidth}, captions align to the text-block width rather than the full minipage width, on the side matching the current margin mode (symmetric: outer; antisymmetric: opposite; right: flush left; left: indented by overhang). The package installs its own \cmd{@makecaption} when \pkg{caption} is not loaded; if \pkg{caption} is present, its formatting takes precedence.
+
+\begin{TodoNote}
+	This is a design decision encoded into the source code.
+\end{TodoNote}
+
+
+\chapter{Runtime reconfiguration}\label{chapter:reconfiguration}
+
+\cmd{pagecanonsetup}\texttt{\{key=value, \ldots\}} reconfigures the layout at any point. Mid-document calls that change layout keys invoke \cmd{newgeometry} internally and therefore trigger a page break. Margin-related keys (\texttt{size=}, \texttt{notespread=}, etc.) take effect immediately without a page break.
+
+\section{Two-pass key processing}\label{sec:twopass}
+
+The first pass scans for \texttt{canon=} and resets all canon-specific parameters (\texttt{vdhN}, \texttt{ateliersstyle}, \texttt{gridN}, \texttt{gridinner}, \texttt{gridouter}, \texttt{gridtop}, \texttt{gridbottom}) to compiled defaults if the canon value is changing. The second pass processes all keys left-to-right. Key order is therefore irrelevant when switching canons.
+
+\section{Reset semantics}\label{sec:reset}
+
+\begin{enumerate}
+	\item Canon changes reset canon-specific parameters. Supply overrides in the same call.
+	\item Same-canon calls do not reset. Existing parameters persist, enabling incremental adjustment.
+	\item Omitting \texttt{canon=} never resets anything.
+\end{enumerate}
+
+\section{Preamble safety}\label{sec:preamblesafety}
+
+\cmd{pagecanonsetup} is safe in the preamble. Layout keys are stored and applied at \cmd{begin}\texttt{\{document\}}. Margin-related keys are also applied at load time, so their defaults are in effect before \cmd{begin}\texttt{\{document\}}.
+
+
+\part{Reference and validation}\label{part:reference}
+
+
+\chapter{Test suite}\label{chapter:testsuite}
+
+Tests live here rather than in the feature chapters. Each test is a minimal check: the preamble gives the configuration, the body exercises the feature, and expected output is stated briefly. Visual tests rely on the page's \texttt{showframe} rules; numerical tests print computed dimensions.
+
+\section{Basic dimensions}\label{sec:dimensions}
+
+\test{Exported dimensions (VdG, letterpaper)}
+
+\showlen{\string\textwidth}{\textwidth}
+\showlen{\string\marginparwidth}{\marginparwidth}
+\showlen{\string\marginparsep}{\marginparsep}
+\showlen{\string\marginandtext}{\marginandtext}
+\showlen{\string\marginandsep}{\marginandsep}
+\showlen{\string\textandsep}{\textandsep}
+\showlen{\string\fullwidthoverhang}{\fullwidthoverhang}
+\showlen{\string\overflowingheadlen}{\overflowingheadlen}
+
+\test{VdG text block proportion}
+
+Expected: $\cmd{textwidth} \approx 2/3 \times 8.5\,\text{in} \approx 408$\,pt.
+
+Computed: \the\textwidth.
+
+\section{Canon switching}\label{sec:switching}
+
+\test{VdH N=9}
+
+\pagecanonsetup{canon=vdh, vdhN=9}
+
+\showlen{\string\textwidth}{\textwidth}
+\showlen{\string\marginparwidth}{\marginparwidth}
+
+Frames should show narrower margins than the preceding VdG pages.
+\lipsum[1]
+
+\test{Tufte}
+
+\pagecanonsetup{canon=tufte}
+
+\showlen{\string\textwidth}{\textwidth}
+\showlen{\string\marginparwidth}{\marginparwidth}
+
+\lipsum[2]
+
+\test{Ateliers luxury}
+
+\pagecanonsetup{canon=ateliers, ateliersstyle=luxury}
+
+\showlen{\string\textwidth}{\textwidth}
+\showlen{\string\marginparwidth}{\marginparwidth}
+
+\lipsum[3]
+
+\test{Grid 9$\times$9 with custom cells}
+
+\pagecanonsetup{canon=grid, gridN=9, gridinner=1, gridouter=3, gridtop=1, gridbottom=2}
+
+\showlen{\string\textwidth}{\textwidth}
+\showlen{\string\marginparwidth}{\marginparwidth}
+
+\lipsum[4]
+
+\test{\texttt{canon=false}}
+
+\pagecanonsetup{canon=false}
+
+\showlen{\string\textwidth}{\textwidth}
+
+Expected: geometry default ($\approx 345$\,pt on letterpaper).
+
+% restore for subsequent tests
+\pagecanonsetup{canon=vdg}
+
+\section{Margin notes}\label{sec:marginnotestest}
+
+\test{Single note}
+
+\noindent This sentence contains a margin note.\marginnote{Single note. Should appear in the outer margin at the call-site baseline. Width: \the\marginparwidth.} The note should appear in the outer margin without disturbing the flow of body text.
+
+\lipsum[66]
+
+\test{Three adjacent notes (collision)}
+
+\noindent Three notes are placed in quick succession.
+\marginnote{First note.}
+\marginnote{Second note: pushed below first by collision avoidance.}
+\marginnote{Third note: pushed below second.} All three should appear without overlapping. If the notes exceed the available margin depth they overflow the page foot.
+
+\lipsum[1]
+
+\test{Positive offset}
+
+\noindent Call site for a note pushed 2\,cm down.\marginnote{Shifted 2\,cm below baseline.}[2cm]
+
+\test{Negative offset}
+
+\noindent Call site for a note pulled 1\,cm up.\marginnote{Shifted 1\,cm above baseline.}[-1cm]
+
+\test{Zero explicit offset}
+
+\noindent Call site for a note with explicit zero offset.\marginnote{Zero offset: same as auto.}[0pt] Behaviorally identical to the auto path.
+
+\lipsum[2]
+
+\test{Font isolation inside italic}
+
+\noindent This sentence is \textit{entirely italic and contains a margin note\marginnote{Upright despite italic context.} mid-run}, and the italic continues after.
+
+\test{Font isolation inside bold}
+
+\noindent \textbf{Bold sentence with a margin note\marginnote{Normal weight despite bold context.} inside.}
+
+\lipsum[3]
+
+\test{Small-font notes}
+
+\pagecanonsetup{size=small}
+
+\marginnote{Small-font note.}
+\noindent Margin note text is now typeset in \texttt{small}.
+\lipsum[67]
+
+\test{Wider line spread}
+
+\pagecanonsetup{notespread=1.2}
+
+\marginnote{Wider spread: 1.2. Lines in this note are more widely spaced.}
+\noindent Line spacing increased to 1.2.
+\lipsum[68]
+
+\pagecanonsetup{size=footnotesize, notespread=1.05}
+
+\test{Ragged-left notes}
+
+\pagecanonsetup{justification=raggedleft}
+
+\marginnote{Ragged left note. Text is flush right inside the margin column.}
+\noindent Note justification changed to \texttt{raggedleft}.
+\lipsum[69]
+
+\pagecanonsetup{justification=default}
+
+\section{Sidenotes}\label{sec:sidenotestest}
+
+\test{Auto-numbered sidenote}
+
+The sidenote command attaches a mark in the text\sidenote{First sidenote. Auto-numbered from the global counter. Should appear in the outer margin.} and places the numbered annotation in the margin.
+
+\lipsum[1]
+
+\test{Sidenote with positive offset}
+
+Sidenote pushed 2\,cm down from baseline.\sidenote{Shifted 2cm below baseline.}[2cm]
+
+\test{Sidenote with negative offset}
+
+Sidenote pulled 1\,cm up.\sidenote{Shifted 1cm above baseline.}[-1cm]
+
+\lipsum[2]
+
+\test{Separated mark and text}
+
+\noindent\sidenotemark\ The mark was placed here by
+\texttt{\string\sidenotemark}.%
+\sidenotetext{This note text was placed by \texttt{\string\sidenotetext} immediately after the mark, with a 1\,cm push.}[1cm]
+
+\lipsum[3]
+
+\test{Independent margin-note and sidenote sizes}
+
+\pagecanonsetup{marginsize=false, marginnotesize=small, sidenotesize=footnotesize}
+
+\marginnote{Small margin note.} Text with a sidenote\sidenote{Footnotesize sidenote.} next to a margin note. The margin note uses \texttt{small}; the sidenote uses \texttt{footnotesize}.
+
+\lipsum[67]
+
+\pagecanonsetup{marginsize=true, size=footnotesize}
+
+\section{Margin modes}
+
+\test{Symmetric fullwidth on odd page}
+
+\begin{fullwidth}
+	\testbox{Symmetric, odd page: fullwidth extends into the right (outer) margin.}
+\end{fullwidth}
+
+\test{Symmetric fullwidth on forced even page}
+
+\cleardoublepage\mbox{}\clearpage
+\begin{fullwidth}
+	\testbox{Symmetric, even page: fullwidth extends leftward into the outer margin.}
+\end{fullwidth}
+
+\clearpage
+
+\test{Antisymmetric margin note and fullwidth}
+
+\pagecanonsetup{canon=vdg, margins=antisymmetric}
+
+\marginnote{Antisymmetric: note is in the inner (spine-side) margin.}
+\noindent Margin note should appear on the inner margin.
+
+\begin{fullwidth}
+	\testbox{Antisymmetric: fullwidth extends into the inner margin.}
+\end{fullwidth}
+
+\lipsum[5]
+
+\test{Right-margin fullwidth}
+
+\pagecanonsetup{canon=vdg, margins=right}
+
+\begin{fullwidth}
+	\testbox{Right-margin mode: fullwidth always extends rightward.}
+\end{fullwidth}
+
+\test{Left-margin fullwidth}
+
+\pagecanonsetup{canon=vdg, margins=left}
+
+\begin{fullwidth}
+	\testbox{Left-margin mode: fullwidth always extends leftward.}
+\end{fullwidth}
+
+\pagecanonsetup{canon=vdg, margins=symmetric}
+
+\section{Gutters}\label{sec:gutterstest}
+
+\test{Gutter in \texttt{geometry} mode}
+
+\pagecanonsetup{canon=vdg, gutterval=12mm, guttermode=geometry}
+
+\showlen{\string\textwidth}{\textwidth}
+
+Text width unchanged from zero-gutter VdG; inner margin is 12\,mm wider.
+
+\test{Gutter in \texttt{satzspiegel} mode}
+
+\pagecanonsetup{canon=vdg, gutterval=12mm, guttermode=satzspiegel}
+
+\showlen{\string\textwidth}{\textwidth}
+
+Text width narrower: canon computed on reduced leaf width $W - 12$\,mm.
+
+\pagecanonsetup{canon=vdg, gutterval=0mm}
+
+\section{Fullwidth environment}
+
+\test{Default fullwidth}\label{sec:fullwidthtest}
+
+\begin{fullwidth}
+	\testbox{Default: 0.5\string\baselineskip\ skip, centered. Width = \the\linewidth.}
+\end{fullwidth}
+
+\test{Custom skip and justification}
+
+\begin{fullwidth}[skip=2\baselineskip, justification=raggedright]
+	\testbox{2\string\baselineskip\ skip above. Ragged right.}
+\end{fullwidth}
+
+\test{Justified}
+
+\begin{fullwidth}[justification=justified]
+	\testbox{\lipsum[6]}
+\end{fullwidth}
+
+\test{Zero skip}
+
+\begin{fullwidth}[skip=0pt]
+	\testbox{Zero skip.}
+\end{fullwidth}
+
+\test{Figure with caption in fullwidth}
+
+\begin{fullwidth}
+	\begingroup
+	\centering
+	\rule{\linewidth}{3cm}
+	\par\smallskip
+	\makeatletter
+	\FW@makecaption{Figure}{Caption confined to text column width. On odd pages it is flush left; on even pages it is indented by the overhang distance.}
+	\makeatother
+	\endgroup
+\end{fullwidth}
+
+\section{Runtime reconfiguration}\label{sec:runtumeconfig}
+
+\test{Chained reconfiguration}
+
+\showlen{\string\textwidth}{\textwidth}
+
+\pagecanonsetup{canon=tufte, margins=right}
+
+After Tufte + right:
+\showlen{\string\textwidth}{\textwidth}
+\showlen{\string\marginparwidth}{\marginparwidth}
+
+\begin{fullwidth}
+	\testbox{Tufte + right: fullwidth extends rightward on every page.}
+\end{fullwidth}
+
+\pagecanonsetup{canon=ateliers, ateliersstyle=neater, margins=symmetric}
+
+After Ateliers neater + symmetric:
+\showlen{\string\textwidth}{\textwidth}
+
+\begin{fullwidth}
+	\testbox{Ateliers neater + symmetric. Narrower overhang than Tufte.}
+\end{fullwidth}
+
+\pagecanonsetup{canon=vdg, margins=symmetric}
+
+\test{Canon switch resets stale parameters}
+
+\pagecanonsetup{canon=grid, gridN=9, gridouter=3}
+
+Grid 9$\times$9, outer=3: \showlen{\string\textwidth}{\textwidth}
+
+\pagecanonsetup{canon=vdg}
+
+VdG (grid params discarded): \showlen{\string\textwidth}{\textwidth}
+
+\pagecanonsetup{canon=grid}
+
+Grid defaults (should be 6$\times$6, outer=2): \showlen{\string\textwidth}{\textwidth}
+
+The last width must match the 6$\times$6 default, not the prior 9$\times$9 outer=3 value.
+
+\test{Key order independence}
+
+\pagecanonsetup{gridN=12, canon=grid, gridouter=3}
+
+Order \texttt{gridN, canon, gridouter}: \showlen{\string\textwidth}{\textwidth}
+
+\pagecanonsetup{canon=vdg}
+\pagecanonsetup{canon=grid, gridouter=3, gridN=12}
+
+Order \texttt{canon, gridouter, gridN}: \showlen{\string\textwidth}{\textwidth}
+
+Both widths must be identical.
+
+\test{Same-canon persistence}
+
+\pagecanonsetup{canon=grid, gridN=9, gridouter=3}
+
+Grid 9$\times$9, outer=3: \showlen{\string\textwidth}{\textwidth}
+
+\pagecanonsetup{canon=grid}
+
+Same canon, no reset: \showlen{\string\textwidth}{\textwidth}
+
+Both widths must be identical.
+
+\test{Recovery from \texttt{canon=false}}
+
+\pagecanonsetup{canon=false}
+
+\showlen{\string\textwidth}{\textwidth}
+
+\pagecanonsetup{canon=tufte, margins=symmetric}
+
+\showlen{\string\textwidth}{\textwidth}
+
+Should match earlier Tufte values; \texttt{canon=false} must not corrupt state.
+
+\pagecanonsetup{canon=vdg, margins=symmetric}
+
+
+\chapter{Edge cases and invariants}\label{chapter:edge}
+
+\section{Margin guard}\label{sec:guard}
+
+For non-grid canons, $\texttt{marginparwidth} + 2\,\texttt{marginparsep} \leq \texttt{outermargin}$ is enforced. If violated, \texttt{marginparwidth} is shrunk with a warning.
+
+\test{Margin guard invariant}
+
+$\texttt{marginparwidth} + 2\,\texttt{marginparsep} = \the\dimexpr\marginparwidth+2\marginparsep\relax$.
+
+Must not exceed the outer margin width visible in the \texttt{showframe} rules.
+
+\section{Grid $N=3$ failsafe}\label{sec:N3}
+
+When \texttt{gridN=3} with default cell counts (inner=1, outer=2, top=1, bottom=2), the text area would be zero. The package adjusts to 1:1 allocation.
+
+\test{Grid $N=3$ failsafe}
+
+\pagecanonsetup{canon=grid, gridN=3, gridinner=1, gridouter=2, gridtop=1, gridbottom=2}
+
+\showlen{\string\textwidth}{\textwidth}
+
+Expected: $\approx 1/3$ of paper width (one cell of three).
+
+\pagecanonsetup{canon=vdg, margins=symmetric}
+
+\section{Font isolation}\label{sec:isolation}
+
+\cmd{normalfont} is prepended before \cmd{marginfont} at every content-building site. Notes cannot inherit italic, bold, or any other font variant from the call site. See the margin-notes test section.
+
+\section{Twocolumn}\label{sec:twocolumn}
+
+Loading \pkg{canons} in twocolumn mode emits a package warning; marginalia placement is not guaranteed. Not tested here.
+
+\section{Unknown canon}\label{sec:unknown}
+
+Passing an unrecognized \texttt{canon} value triggers a warning and falls back to \texttt{vdg}.
+
+
+\chapter{Quick reference}\label{chapter:quickreference}
+
+\section{Package options}\label{sec:options}
+
+
+\begin{table}[h]
+	\caption{Canon selection options}
+	\label{tab:cononselection}
+	\tagpdfsetup{table/header-rows={1}}
+	\centering
+	\begin{tabular}{lll}
+		\textbf{Key}        & \textbf{Values}  & \textbf{Default} \\
+		\hline
+		\texttt{canon}         & \texttt{vdg}, \texttt{vdh}, \texttt{tufte},
+		\texttt{ateliers}, \texttt{grid}, \texttt{false}
+		& \texttt{vdg} \\
+		\texttt{vdhN}       & 3, 6, 9, 12, 15  & 6                \\
+		\texttt{ateliersstyle} & \texttt{ordinary}, \texttt{neater}, \texttt{luxury}
+		& \texttt{ordinary} \\
+		\texttt{gridN}      & integer $\geq 3$ & 6                \\
+		\texttt{gridinner}  & integer          & 1                \\
+		\texttt{gridouter}  & integer          & 2                \\
+		\texttt{gridtop}    & integer          & 1                \\
+		\texttt{gridbottom} & integer          & 2                \\
+	\end{tabular}
+\end{table}
+
+
+
+
+
+\begin{table}[h]
+	\caption{Layout selection options}
+	\label{tab:layoutselection}
+	\tagpdfsetup{table/header-rows={1}}
+	\centering
+	\begin{tabular}{lll}
+		\textbf{Key}       & \textbf{Values} & \textbf{Default} \\
+		\hline
+		\texttt{margins}       & \texttt{symmetric}, \texttt{antisymmetric},
+		\texttt{right}, \texttt{left} & class-dep. \\
+		\texttt{gutterval} & dimension       & \texttt{0mm}     \\
+		\texttt{guttermode}    & \texttt{geometry}, \texttt{satzspiegel}
+		& \texttt{geometry} \\
+		\texttt{showframe} & bare boolean    & off              \\
+		\texttt{landscape} & bare boolean    & off              \\
+		\texttt{debug}     & bare boolean    & off              \\
+	\end{tabular}
+\end{table}
+
+
+
+
+\begin{table}[h]
+	\caption{Marginalia options; unified}
+	\label{tab:marginaliaunifiedselection}
+	\tagpdfsetup{table/header-rows={1}}
+	\centering
+	\begin{tabular}{lll}
+		\textbf{Key}          & \textbf{Values} & \textbf{Default}      \\
+		\hline
+		\texttt{size}         & font size name  & \texttt{footnotesize} \\
+		\texttt{justification} & \texttt{default}, \texttt{raggedright},
+		\texttt{raggedleft}, \texttt{centered}, \texttt{justified}
+		& \texttt{default} \\
+		\texttt{notespread}   & factor          & \texttt{1.05}         \\
+		\texttt{numbering}     & \texttt{global}, \texttt{persection},
+		\texttt{perchapter}, \texttt{perpage}
+		& \texttt{global} \\
+		\texttt{nomarginalia} & bare boolean    & off                   \\
+	\end{tabular}
+\end{table}
+
+
+\begin{table}[h]
+	\caption{Marginalia options; split (override unified)}
+	\label{tab:marginaliasplitselection}
+	\tagpdfsetup{table/header-rows={1}}
+	\centering
+	\begin{tabular}{lll}
+		\textbf{Key}               & \textbf{Values}              & \textbf{Default}               \\
+		\hline
+		\texttt{marginsize}        & \texttt{true}/\texttt{false} & \texttt{true}                  \\
+		\texttt{marginnotesize}    & font size name               & follows \texttt{size}          \\
+		\texttt{sidenotesize}      & font size name               & follows \texttt{size}          \\
+		\texttt{marginjustify}     & \texttt{true}/\texttt{false} & \texttt{true}                  \\
+		\texttt{marginnotejustify} & justification value          & follows \texttt{justification} \\
+		\texttt{sidenotejustify}   & justification value          & follows \texttt{justification} \\
+	\end{tabular}
+\end{table}
+
+\section{Fullwidth options}\label{sec:fulloptions}
+
+\begin{table}
+	\centering
+	\caption{Options for fullwidth}
+	\label{tab:fullwidthoptions}
+	\tagpdfsetup{table/header-rows={1}}
+	\begin{tabular}{lll}
+		\textbf{Key}  & \textbf{Values} & \textbf{Default}                 \\
+		\hline
+		\texttt{skip} & dimension       & \texttt{0.5\string\baselineskip} \\
+		\texttt{justification} & \texttt{centering}, \texttt{raggedright},
+		\texttt{raggedleft}, \texttt{justified}
+		& \texttt{centering} \\
+	\end{tabular}
+\end{table}
+
+\section{Commands}\label{sec:commands}
+
+\begin{table}
+	\centering
+	\caption{Options for commands}
+	\label{tab:commandsoptions}
+	\tagpdfsetup{table/header-rows={1}}
+	\begin{tabular}{ll}
+		\textbf{Command}                              & \textbf{Action}                             \\
+		\hline
+		\cmd{pagecanonsetup}\texttt{\{\ldots\}}       & reconfigure; layout keys trigger page break \\
+		\cmd{pagecanonmargins}                        & expands to current margin mode              \\[3pt]
+		\cmd{marginnote}\texttt{\{text\}}             & margin note at call-site baseline           \\
+		\cmd{marginnote}\texttt{\{text\}[dim]}        & margin note with explicit voffset           \\[3pt]
+		\cmd{sidenote}\texttt{\{text\}}               & numbered sidenote, auto-position            \\
+		\cmd{sidenote}\texttt{\{text\}[dim]}          & numbered sidenote with voffset              \\
+		\cmd{sidenote}\texttt{[n]\{text\}}            & sidenote with explicit number               \\
+		\cmd{sidenote}\texttt{[n]\{text\}[dim]}       & explicit number and voffset                 \\
+		\cmd{sidenotetext}\texttt{\{text\}}           & note text only (no mark, no step)           \\
+		\cmd{sidenotetext}\texttt{\{text\}[dim]}      & note text with voffset                      \\
+		\cmd{sidenotemark}                            & inline mark only (steps counter)            \\
+		\cmd{sidenotemark}\texttt{[n]}                & inline mark with explicit number            \\[3pt]
+		\cmd{canonssidenotemarkformat}\texttt{\{n\}}  & format hook: inline mark                    \\
+		\cmd{canonssidenotelabelformat}\texttt{\{n\}} & format hook: margin label                   \\[3pt]
+		\cmd{canonsswitchmargin}                      & toggle current marginpar side               \\
+		\cmd{canonsresetmargin}                       & restore marginpar side to mode default      \\
+	\end{tabular}
+\end{table}
+
+\section{Exported lengths}\label{sec:lengths}
+
+\begin{table}
+	\centering
+	\caption{Exported lengths}
+	\label{tab:exportlengths}
+	\tagpdfsetup{table/header-rows={1}}
+	\begin{tabular}{ll}
+		\textbf{Length}          & \textbf{Value}                                                \\
+		\hline
+		\cmd{marginandtext}      & $\cmd{textwidth} + \cmd{marginparwidth} + \cmd{marginparsep}$ \\
+		\cmd{marginandsep}       & $\cmd{marginparwidth} + \cmd{marginparsep}$                   \\
+		\cmd{textandsep}         & $\cmd{textwidth} + \cmd{marginparsep}$                        \\
+		\cmd{fullwidthoverhang}  & $\cmd{marginparwidth} + \cmd{marginparsep}$                   \\
+		\cmd{overflowingheadlen} & same as \cmd{marginandtext}                                   \\
+	\end{tabular}
+\end{table}
+
+\printbibliography
+
+
+\appendix
+\chapter{Formulary}\label{chapter:formulary}
+
+
+\section*{Frames, symbols, order}\label{sec:formulary1}
+\[
+	W = \cmd{paperwidth},\quad H = \cmd{paperheight},\quad
+	W_\ast = \begin{cases}
+	W & \text{(default)}\\
+	W-g & \text{if \texttt{guttermode=satzspiegel}}
+	\end{cases}
+\]
+Order: (1) paper $\to$ (2) canon $\to$ (3) gutter mode $\to$ (4) margin mode $\to$ (5) export lengths.
+
+\section*{Canon summaries}\label{sec:formulary2}
+
+\paragraph{Van de Graaf (vdg).}
+$m_i = W_\ast/9$, $m_o = 2W_\ast/9$, $m_t = H/9$, $m_b = 2H/9$. $\cmd{textwidth} = \tfrac{2}{3}W_\ast$, $\cmd{textheight} = \tfrac{2}{3}H$. Not centered; outer/bottom $>$ inner/top.
+
+\paragraph{Villard de Honnecourt (vdh, $N\in\{3,6,9,12,15\}$).}
+With $u = W_\ast/(N+3)$: $m_i = u$, $m_o = 2u$, $m_t = 1.5u$, $m_b = 3u$. $\cmd{textwidth} = \tfrac{N}{N+3}W_\ast$, $\cmd{textheight} = H - 4.5u$. Verticals depend on $W_\ast$, so block aspect varies with $H/W$.
+
+\paragraph{Tufte (tufte).}
+$m_i \approx 2W/17$, $m_o \approx 3W/8$ (code $0.372941W$), $m_t = H/11$, $m_b = 3H/22$. $\cmd{textwidth} \approx 0.509412\,W$. Notes: $\texttt{marginparwidth} \approx 4W/17$, $\texttt{marginparsep} \approx W/26$.
+
+\paragraph{Canon des Ateliers (ateliers).}
+With $k \in \{\tfrac{3}{4}, \tfrac{2}{3}, \tfrac{5}{8}\}$ (ordinary/neater/luxury) and $w = (1-k)W$: $m_i = 0.4w$, $m_o = 0.6w$, $m_t = 0.5w$, $m_b = 0.7w$.
+
+Explicitly:
+\[
+	\begin{array}{l@{\ }l}
+		\mathrm{ordinary:} & (m_i,m_o,m_t,m_b) = (\tfrac{1}{10},\tfrac{3}{20},\tfrac{1}{8},\tfrac{7}{40})W \\
+		\mathrm{neater:}   & (\tfrac{2}{15},\tfrac{1}{5},\tfrac{1}{6},\tfrac{7}{30})W                      \\
+		\mathrm{luxury:}   & (\tfrac{3}{20},\tfrac{9}{40},\tfrac{3}{16},\tfrac{21}{80})W                   
+	\end{array}
+\]
+$\cmd{textwidth} = kW$. Aspect varies with $H/W$.
+
+\paragraph{Grid (grid).}
+Pick $N \geq 3$. Cell size $c_w = W_\ast/N$, $c_h = H/N$. Choose integers $L,R,T,B \geq 0$ with $L+R < N$ and $T+B < N$: $m_i = Lc_w$, $m_o = Rc_w$, $m_t = Tc_h$, $m_b = Bc_h$. $\cmd{textwidth} = (N{-}L{-}R)c_w$, $\cmd{textheight} = (N{-}T{-}B)c_h$.
+
+Area fraction (relative to $W_\ast \times H$):
+\[
+	\frac{\cmd{textwidth}}{W_\ast}\cdot\frac{\cmd{textheight}}{H}
+	= \Bigl(1-\tfrac{L+R}{N}\Bigr)\Bigl(1-\tfrac{T+B}{N}\Bigr).
+\]
+VdG exactly if $N$ multiple of $9$ and $(L,R,T,B) = (N/9, 2N/9, N/9, 2N/9)$. Honnecourt is generally approximated; Ateliers, rounded.
+
+\paragraph{Footers (all canons).} $\texttt{footskip} = \tfrac{1}{2}m_b$.
+
+\section*{Gutter modes}\label{sec:formulary3}
+
+\begin{widedesc}[7em]
+	\item[\texttt{geometry}] $\mathrm{inner}_\mathrm{final} = m_i + g$, $\mathrm{outer}_\mathrm{final} = m_o - g$. Preserves \cmd{textwidth}; may clamp outer to 0 if $g$ is large.
+	\item[\texttt{satzspiegel}] Compute canon on $W_\ast = W - g$, then add $+g$ to inner. Preserves proportions; $\Delta\cmd{textwidth} = -\alpha\,g$ with $\alpha = \tfrac{2}{3}$ (vdg), $\tfrac{N}{N+3}$ (vdh), $\approx 0.509412$ (tufte), $k$ (ateliers), $\tfrac{N-L-R}{N}$ (grid).
+\end{widedesc}
+
+
+\end{document}
