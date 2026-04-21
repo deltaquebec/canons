@@ -204,7 +204,10 @@ The usual good practice:
 
 ## Author
 
-**Daniel Quigley** — [dquigleydev@gmail.com](mailto:dquigleydev@gmail.com) · [GitHub](https://github.com/deltaquebec) · [Website](https://dquigley.dev)
+**Daniel Quigley**
+- [dquigleydev@gmail.com](mailto:dquigleydev@gmail.com)
+- [GitHub](https://github.com/deltaquebec) 
+- [Website](https://dquigley.dev)
 
 ## Acknowledgments
 
