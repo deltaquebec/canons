@@ -2,7 +2,8 @@ manifest.txt
 README.md
 .gitignore
 LICENSE
-docs/documentation-canons.pdf
+docs/canons.pdf
+docs/canons.tex
 src/canons.sty
 bts/bts-sketch.pdf
 bts/bts-ratio.pdf
