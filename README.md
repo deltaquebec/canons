@@ -1,8 +1,8 @@
-# Canons: classical page layout for LaTeX
+# page-canons: classical page layout for LaTeX
 
 **Deterministic, historically-grounded page layouts with in-house marginalia**
 
-The **canons** package implements classical and classical-inspired page construction canons as explicit mathematical rules, providing reproducible layouts based on historical book design. A single package now supplies page geometry, margin notes, sidenotes, and fullwidth environments with one external dependency: `geometry`.
+The **page-canons** package implements classical and classical-inspired page construction canons as explicit mathematical rules, providing reproducible layouts based on historical book design. A single package now supplies page geometry, margin notes, sidenotes, and fullwidth environments with one external dependency: `geometry`.
 
 [Overleaf](https://www.overleaf.com/read/ftstdrznqvqb#222e96)
 
@@ -14,7 +14,6 @@ Do not ask what happened to version 2.x....
 
 ## Requirements
 
-- **LuaLaTeX**. The marginalia engine uses `\savepos`, `\lastxpos`, `\lastypos` for position-aware placement; pdfLaTeX and XeLaTeX are not supported;
 - **geometry** (the only declared external package dependency);
 - two compilation passes for accurate sidenote/margin-note vertical positioning (position labels are written to `.aux`).
 
@@ -35,18 +34,18 @@ Do not ask what happened to version 2.x....
 
 ```bash
 git clone https://github.com/deltaquebec/canons.git
-cp canons/src/canons.sty ~/texmf/tex/latex/canons/
+cp canons/src/page-canons.sty ~/texmf/tex/latex/canons/
 texhash ~/texmf
 ```
 
-Or place `canons.sty` in your project directory.
+Or place `page-canons.sty` in your project directory.
 
 ## Quick start
 
 ```latex
 \DocumentMetadata{lang=en-US, pdfversion=2.0}
 \documentclass{book}
-\usepackage[canon=vdg, margins=symmetric, gutterval=8mm]{canons}
+\usepackage[canon=vdg, margins=symmetric, gutterval=8mm]{page-canons}
 
 \begin{document}
 
@@ -68,19 +67,19 @@ Compile with `lualatex` twice.
 
 ```latex
 % notes-heavy article
-\usepackage[canon=tufte, margins=right, numbering=perpage, size=small]{canons}
+\usepackage[canon=tufte, margins=right, numbering=perpage, size=small]{page-canons}
 
 % economical textbook
-\usepackage[canon=vdh, vdhN=12, paper=a4paper]{canons}
+\usepackage[canon=vdh, vdhN=12, paper=a4paper]{page-canons}
 
 % luxury display
-\usepackage[canon=ateliers, ateliersstyle=luxury]{canons}
+\usepackage[canon=ateliers, ateliersstyle=luxury]{page-canons}
 
 % custom modular grid
-\usepackage[canon=grid, gridN=12, gridinner=1, gridouter=3]{canons}
+\usepackage[canon=grid, gridN=12, gridinner=1, gridouter=3]{page-canons}
 
 % geometry only; marginalia suppressed
-\usepackage[canon=false, nomarginalia]{canons}
+\usepackage[canon=false, nomarginalia]{page-canons}
 ```
 
 ## Available canons
@@ -159,7 +158,7 @@ Compile with `lualatex` twice.
 
 ## Documentation
 
-The repository includes a combined primer and test suite (`canons-primer.pdf`) organized in three parts: conceptual framework; user manual; test suite with edge cases. All example pages render with `showframe` enabled so geometry effects are directly visible.
+The repository includes a combined primer and test suite (`canons.pdf`) organized in three parts: conceptual framework; user manual; test suite with edge cases. All example pages render with `showframe` enabled so geometry effects are directly visible.
 
 ## Scope and limitations
 
@@ -190,10 +189,10 @@ The usual good practice:
 ```bibtex
 @misc{canons2026,
   author = {Quigley, Daniel},
-  title  = {Canons: classical page layout for LaTeX},
+  title  = {page-canons: classical page layout for LaTeX},
   year   = {2026},
   url    = {https://github.com/deltaquebec/canons},
-  version = {3.9.2},
+  version = {3.9.3},
   note   = {LPPL 1.3c}
 }
 ```
@@ -222,8 +221,8 @@ Conceptual inspiration from Jan Tschichold, Robert Bringhurst, and Edward Tufte.
 
 ---
 
-**Version**: 3.9.2
-**Last updated**: April 2026
+**Version**: 3.9.3
+**Last updated**: May 2026
 **Status**: Active development
 
 ---
