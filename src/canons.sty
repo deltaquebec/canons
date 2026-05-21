@@ -1,9 +1,20 @@
 %% canons.sty
-%% Version: 3.9.2 | 2026/04/21 | LPPL 1.3c
+%% Version: 3.9.3 2026-04-21
 %% Daniel Quigley <dquigleydev@gmail.com>
+%% License:     LaTeX Project Public License 1.3c
 
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesPackage{canons}[2026/04/21 v3.9.2 classical page canons with margins]
+
+% lualatex is recommended for PDF/UA-2 accessibility
+\RequirePackage{iftex}
+\ifluatex\else
+  \PackageWarning{canons}{%
+    LuaLaTeX is the recommended engine for canons (for PDF/UA-2
+    accessibility support).\MessageBreak
+    The package will load under your current engine; accessibility
+    features may be limited}%
+\fi
 
 % geometry is required
 
@@ -382,7 +393,7 @@
     \CM@resolvefont\CM@sn@font{\CM@snsize}%
   \fi}
 
-% initialise font at load time 
+% initialize font at load time 
 \CM@resolveallfont
 
 % per page counter
@@ -427,7 +438,7 @@
   }{%
     \PackageWarning{canons}{Unknown numbering '\CM@numbering', using global}}}}}}
 
-% for lualatex \savepos / \lastxpos / \lastypos are LuaTeX primitives
+% \savepos, \lastxpos, \lastypos pdfTeX primitives, available in all modern engines
 \newif\ifCM@hassavepos \CM@hassavepostrue
 \let\CM@savepos\savepos
 \let\CM@xposprim\lastxpos
@@ -676,7 +687,7 @@
 \long\def\CM@marginnote@public#1{%
   \@ifnextchar[{\CM@marginnote@manual{#1}}{\CM@marginnote@impl{#1}{0pt}}}
 
-% thin wrapper: feeds explicit offset into unified implementation
+% feeds explicit offset into unified implementation
 \long\def\CM@marginnote@manual#1[#2]{\CM@marginnote@impl{#1}{#2}}
 
 % unified implementation
@@ -703,7 +714,6 @@
   \global\CM@mn@prevseq\CM@pos@seq
   \global\CM@mn@prevoffset\CM@mn@accum}
 
-% sidenotes-package integration
 % when the sidenotes package is loaded, redefine \marginfont such that
 % sidenotes uses our font/justification settings
 \def\CM@integ@sidenotes{%
@@ -868,11 +878,9 @@
   \fi}
 
 % gutter
-% symmetric: add to \pagecanon@innermargin (geometry.inner = spine under twoside).
-% else: add to \pagecanon@outermargin, which is emitted into the spine slot
-%       under antisymmetric (swapped) and left/right (spine on that side).
-% marginpar clamp: subtract the gutter under non-symmetric layouts because
-% the spine margin is shared between the binding allowance and the marginpar.
+% symmetric: add to \pagecanon@innermargin
+% else: add to \pagecanon@outermargin
+% marginpar clamp: subtract gutter under non-symmetric layouts
 \def\pagecanon@applyguttergeometry{%
   \pagecanon@ifeq{\pagecanon@margins}{symmetric}{%
     \advance\pagecanon@innermargin by\pagecanon@gutterlength\relax
@@ -1083,10 +1091,16 @@
   \immediate\write\@auxout{%
     \string\providecommand\string\CM@pos@data[4]{}}%
   \ifpagecanon@nomarginalia\else
-    \def\marginfont{\canonsmarginfont\CM@mn@justify}%
-    \let\marginnote\CM@marginnote@public
-    \@ifpackageloaded{sidenotes}{\CM@integ@sidenotes}{}%
-    \CM@apply@numbering
+    \@ifundefined{marginnote}{%
+      \def\marginfont{\canonsmarginfont\CM@mn@justify}%
+      \let\marginnote\CM@marginnote@public
+      \@ifpackageloaded{sidenotes}{\CM@integ@sidenotes}{}%
+      \CM@apply@numbering
+    }{%
+      \PackageInfo{canons}{%
+        \string\marginnote\space already defined by another package;
+        canons defers (pass nomarginalia to silence)}%
+    }%
   \fi}
 
 % utility commands
