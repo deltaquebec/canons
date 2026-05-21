@@ -11,7 +11,7 @@
 \documentclass[11pt, twoside, openany]{book}
 \usepackage{fontspec}
 \usepackage{unicode-math}
-\usepackage[canon=vdg, margins=symmetric, paper=letterpaper, showframe]{canons}
+\usepackage[canon=vdg, margins=symmetric, paper=letterpaper, showframe]{page-canons}
 \usepackage{tikz}
 \usepackage{float}
 \usepackage{booktabs}
@@ -171,7 +171,7 @@ shrink=10
 
 
 
-\title{\texttt{canons.sty}\\[0.5\baselineskip]
+\title{\texttt{page-canons.sty}\\[0.5\baselineskip]
   \large classical-inspired page layouts with margin functionality}
 \author{Daniel Quigley}
 \date{\today}
@@ -186,7 +186,7 @@ shrink=10
 
 \chapter{Overview}\label{chapter:overview}
 
-\pkg{canons} implements classical page-layout canons with in-house margin notes and sidenotes. Its one declared external dependency is \pkg{geometry}; all other functionality is self-contained. The package requires Lua\LaTeX.
+\pkg{page-canons} implements classical page-layout canons with in-house margin notes and sidenotes. Its one declared external dependency is \pkg{geometry}; all other functionality is self-contained. The package recommends Lua\LaTeX.
 
 The implemented canons are:
 \begin{widedesc}[12em]
@@ -197,9 +197,9 @@ The implemented canons are:
 	\item[Grid] modern $N\times N$ modular system with full control.
 \end{widedesc}
 
-\pkg{canons} offers four margin modes (\texttt{symmetric}, \texttt{antisymmetric}, \texttt{right}, \texttt{left}), gutter support with two calculation modes, a \texttt{fullwidth} environment, and exported dimensions for margin-aware content.
+\pkg{page-canons} offers four margin modes (\texttt{symmetric}, \texttt{antisymmetric}, \texttt{right}, \texttt{left}), gutter support with two calculation modes, a \texttt{fullwidth} environment, and exported dimensions for margin-aware content.
 
-Use \pkg{canons} when you want canonical proportions and consistent marginalia defaults without adopting a full document class. It sits above \pkg{geometry}: \pkg{canons} handles the math; \pkg{geometry}, the implementation. For end-to-end book production, use \pkg{memoir} or KOMA-Script; for a curated editorial idiom, use \pkg{tufte-book}.
+Use \pkg{page-canons} when you want canonical proportions and consistent marginalia defaults without adopting a full document class. It sits above \pkg{geometry}: \pkg{page-canons} handles the math; \pkg{geometry}, the implementation. For end-to-end book production, use \pkg{memoir} or KOMA-Script; for a curated editorial idiom, use \pkg{tufte-book}.
 
 Part I fixes concepts; Part II is the user manual; Part III consolidates tests, edge cases, and a quick reference. All compiled pages show geometry frames (\texttt{showframe}) such that the reader can see the effect of each option directly.
 
@@ -266,11 +266,11 @@ where each $f_j$ is a dimensionless ratio.
 	The \textbf{constructive (geometric) canon} specifies a procedure on $F$ (subdivide, draw diagonals, intersect lines) that yields a unique textblock $T$.
 \end{EnvDefinition}
 
-The resulting fractions are derived; they may depend on the page aspect $H/W$ and need not be `nice' rationals. The parametric form is what \pkg{canons} implements; the constructive form shows where the proportions come from and helps justify why certain relationships exist: formulas build, constructions justify.
+The resulting fractions are derived; they may depend on the page aspect $H/W$ and need not be `nice' rationals. The parametric form is what \pkg{page-canons} implements; the constructive form shows where the proportions come from and helps justify why certain relationships exist: formulas build, constructions justify.
 
-\section{Requirements}\label{sec:requirements}
+\section{Requirements of a page canon}\label{sec:reqpagecanons}
 
-A canon is a rule we can test; it should behave predictably under scaling, declare the space it acts on, say where it works and what happens when it does not, produce an unambiguous textblock, and change smoothly when inputs do:
+A canon, then, is a rule we can test; it should behave predictably under scaling, declare the space it acts on, say where it works and what happens when it does not, produce an unambiguous textblock, and change smoothly when inputs do:
 \begin{enumerate}
 	\item all outputs scale by $\lambda>0$; units do not matter;
 	\item the canon declares its operative frame (page or leaf) and the recto/verso mapping of inner/outer;
@@ -279,25 +279,25 @@ A canon is a rule we can test; it should behave predictably under scaling, decla
 	\item small input changes do not cause discontinuous jumps (piecewise definitions are allowed, but should be noted).
 \end{enumerate}
 
-\pkg{canons} implements canons as parametric rules, with an optional \texttt{guttermode=satzspiegel} that switches the operative frame from page $P$ to leaf $L$ by recomputing on $W_\ast=W-g$. The Honnecourt family is encoded algebraically (a constructive origin; an algebraic implementation).
+\pkg{page-canons} implements canons as parametric rules, with an optional \texttt{guttermode=satzspiegel} that switches the operative frame from page $P$ to leaf $L$ by recomputing on $W_\ast=W-g$. The Honnecourt family is encoded algebraically (a constructive origin; an algebraic implementation).
 
-\section{Related work}\label{sec:related}
+\section{Related work}\label{sec:relatedwork}
 
-KOMA-Script \cite{koma-script} \pkg{typearea} chooses a typeblock via \texttt{DIV}, \texttt{BCOR}, and class-level heuristics sensitive to font details; \pkg{canons} fixes canonical ratios and shims the result through \pkg{geometry}. Use KOMA for class-integrated page design; use \pkg{canons} for literal canons.
+KOMA-Script \cite{koma-script} \pkg{typearea} chooses a typeblock via \texttt{DIV}, \texttt{BCOR}, and class-level heuristics sensitive to font details; \pkg{page-canons} fixes canonical ratios and shims the result through \pkg{geometry}. Use KOMA for class-integrated page design; use \pkg{page-canons} for literal canons.
 
-\pkg{memoir} \cite{memoir} offers a comprehensive layout calculus (\cmd{settypeblocksize}, \cmd{setlrmargins}, diagnostics) and is a full publishing toolkit. For end-to-end book production, \pkg{memoir} is the right hammer; \pkg{canons} is a small wrench: canons, gutters, marginalia.
+\pkg{memoir} \cite{memoir} offers a comprehensive layout calculus (\cmd{settypeblocksize}, \cmd{setlrmargins}, diagnostics) and is a full publishing toolkit. For end-to-end book production, \pkg{memoir} is the right hammer; \pkg{page-canons} is a small wrench: canons, gutters, marginalia.
 
-\pkg{tufte-book} \cite{tufte-latex} embodies a coherent editorial idiom beyond raw geometry: wide outer margins, sidenotes, specialized floats. \pkg{canons} can mimic the broad proportions but does not implement the idiom.
+\pkg{tufte-book} \cite{tufte-latex} embodies a coherent editorial idiom beyond raw geometry: wide outer margins, sidenotes, specialized floats. \pkg{page-canons} can mimic the broad proportions but does not implement the idiom.
 
 \begin{TodoNote}
 	Given $W,H$ and options, margins are fixed by explicit fractions without heuristics. The four margin modes place margin material predictably across \pkg{book}, \pkg{report}, and \pkg{article}. Two gutter modes (invariant textwidth; recomputed on leaf width) are available. Exported lengths (\cmd{marginandtext}, \cmd{fullwidthoverhang}, \cmd{overflowingheadlen}) make margin-aware figures, rules, and floats routine. The package inherits \pkg{geometry}'s flexibility for anything it does not explicitly cover.
 \end{TodoNote}
 
-If you already know your exact margins, \pkg{geometry} alone is simpler; if you want canonical proportions and consistent marginalia defaults, \pkg{canons} saves you from re-deriving them.
+If you already know your exact margins, \pkg{geometry} alone is simpler; if you want canonical proportions and consistent marginalia defaults, \pkg{page-canons} saves you from re-deriving them.
 
 \section{Limitations}\label{sec:limits}
 
-\pkg{canons} deliberately restricts itself to page geometry:
+\pkg{page-canons} deliberately restricts itself to page geometry:
 \begin{itemize}
 	\item layout is resolved once at \cmd{AtBeginDocument}; \cmd{pagecanonsetup} can adjust mid-document, but recomputation is global, not per-page or per-chapter;
 	\item the package does not manage line spacing or enforce a baseline grid;
@@ -308,7 +308,7 @@ If you already know your exact margins, \pkg{geometry} alone is simpler; if you 
 \end{itemize}
 
 
-\part{Using canons}\label{part:using}
+\part{Using page-canons}\label{part:using}
 
 
 \chapter{Loading and compatibility}\label{chapter:loading}
@@ -316,12 +316,14 @@ If you already know your exact margins, \pkg{geometry} alone is simpler; if you 
 \section{Syntax}\label{sec:syntax}
 
 \begin{verbatim}
-\usepackage[<options>]{canons}
+\usepackage[<options>]{page-canons}
 \end{verbatim}
 
 Options fall into three categories: canon selection; margin and marginalia configuration; canon-specific parameters. Unrecognized options are forwarded to \pkg{geometry}.
 
 \section{Dependencies}\label{sec:dependencies}
+
+\pkg{page-canons} targets Lua\LaTeX{} as the recommended engine for PDF/UA-2 accessibility support. The package loads under any modern engine (pdf\LaTeX, Xe\LaTeX, Lua\LaTeX), but emits a warning on non-Lua\LaTeX{} engines; accessibility features may be limited.
 
 \begin{table}
     \centering
@@ -760,14 +762,14 @@ Historical canons encode specific aesthetic judgments about proportion. The Grid
 To reproduce Van de Graaf with Grid:
 \begin{fullwidth}
 	\begin{verbatim}
-\usepackage[canon=grid, gridN=9, gridinner=1, gridouter=2, gridtop=1, gridbottom=2]{canons}
+\usepackage[canon=grid, gridN=9, gridinner=1, gridouter=2, gridtop=1, gridbottom=2]{page-canons}
 	\end{verbatim}
 \end{fullwidth}
 
 Grid admits variations Van de Graaf does not, e.g.:
 \begin{verbatim}
 % same 9x9 grid, but 1:3 horizontal ratio instead of 1:2
-\usepackage[canon=grid, gridN=9, gridinner=1, gridouter=3]{canons}
+\usepackage[canon=grid, gridN=9, gridinner=1, gridouter=3]{page-canons}
 \end{verbatim}
 
 \begin{TodoNote}
@@ -875,7 +877,7 @@ Reduces the effective leaf width to $W_\ast = W - g$ before computing the canon,
 
 \chapter{Marginalia}\label{chapter:marginalia}
 
-\pkg{canons} provides margin notes and sidenotes with in-house collision avoidance, font isolation, and position-aware placement. Implementation writes position labels to the \texttt{.aux} file on the first pass and reads them on the second; \textbf{two compilation passes are required} for accurate vertical positioning. On the first pass, notes appear at the call-site baseline without collision adjustment.
+\pkg{page-canons} provides margin notes and sidenotes with in-house collision avoidance, font isolation, and position-aware placement. Implementation writes position labels to the \texttt{.aux} file on the first pass and reads them on the second; \textbf{two compilation passes are required} for accurate vertical positioning. On the first pass, notes appear at the call-site baseline without collision adjustment.
 
 Margin notes always land in the outer margin, following the current margin mode. On two-sided symmetric documents, the outer margin alternates sides.
 
@@ -977,6 +979,56 @@ Size, line spread, and justification apply to both margin notes and sidenotes vi
 \end{table}
 
 Changes via \cmd{pagecanonsetup} take effect immediately on the next note call; no page break is triggered because the underlying macros are evaluated at typesetting time.
+
+\section{Disabling marginalia and deferment}\label{sec:nomarginalia}
+
+The marginalia engine can be disabled at load time:
+
+\begin{verbatim}
+\usepackage[nomarginalia]{page-canons}
+\end{verbatim}
+
+With \texttt{nomarginalia}, \pkg{page-canons} does not redefine \cmd{marginnote}, does not install the sidenote commands, and does not integrate with \pkg{sidenotes} if loaded. The canon, margin mode, gutter, and fullwidth machinery are unaffected; only marginalia is suppressed. Use this when another package owns marginal placement and \pkg{page-canons} is wanted purely for its geometry.
+
+Furthermore, \pkg{page-canons} checks at \cmd{begin{document}} whether \cmd{marginnote} is already defined; if so, it leaves the existing definition intact and emits a \texttt{PackageInfo} log entry. This handles loading another marginalia provider (\pkg{marginnote} \cite{marginnote}, \pkg{marginalia}, similar) alongside \pkg{page-canons} without an explicit \texttt{nomarginalia} flag.
+
+\pkg{sidenotes} \cite{sidenotes} is detected separately and integrated rather than stepped aside from; the in-house sidenote system defers to it when present.
+
+Pass \texttt{nomarginalia} explicitly when intent is to silence the \texttt{PackageInfo} entry as well.
+
+\section{Accessibility and tagging}\label{sec:tagging}
+
+\begin{TodoNote}
+    Design for accessibility is a work-in-progress. Feedback and constructive criticism is welcome here! I outline the general architecture; whether this is correct or how this can be improved with specific feedback would be much appreciated.
+\end{TodoNote}
+
+\pkg{page-canons} wraps margin notes and sidenotes in PDF \texttt{Aside} structure elements when document-level tagging is active. PDF/UA-2 designates \texttt{Aside} as the structure type for content tangential to the main reading flow; margin notes and sidenotes fit this categorization.
+
+\pkg{page-canons} does not enable tagging itself; tagging is enabled via \cmd{DocumentMetadata}. This manual is compiled with
+
+\begin{verbatim}
+\DocumentMetadata{
+  pdfversion=2.0,
+  pdfstandard={UA-2,a-4f},
+  tagging=on,
+  tagging-setup={activate-all},
+  ...
+}
+\end{verbatim}
+
+declared before \cmd{documentclass}. At \cmd{begin{document}}, \pkg{page-canons} tests for an active tagging session via \cmd{tag\_if\_active:TF} (with a fallback path for older \pkg{tagpdf} releases that exposed the state as \cmd{g\_\_tag\_active\_bool}). If tagging is active, then marginalia hooks install and emit a confirming \texttt{PackageInfo}; if not, the hooks remain no-ops.
+
+\begin{TodoNote}
+    Disabling marginalia (or deferring to another marginalia provider) also disables the \texttt{Aside} hooks: the hooks are invoked only from \pkg{page-canons}'s own \cmd{marginnote} implementation. If marginalia comes from another package, that package is responsible for any tagging.
+\end{TodoNote}
+
+Margin notes called in horizontal mode (inline within paragraphs) are not nested inside the surrounding paragraph element. Doing so would place tangential content inside the main reading flow, contradicting the semantics of \texttt{Aside}. Instead, the implementation ends the current marked-content sequence, walks the \pkg{tagpdf} structure stack upward for the nearest \texttt{Part} or \texttt{Sect} ancestor, begins an \texttt{Aside} as a child of that ancestor, places the note content, closes the \texttt{Aside}, and resumes the marked-content sequence.
+
+Margin notes called in vertical mode begin an \texttt{Aside} in the local context without parent rerouting; vertical placement is already outside the inline flow.
+
+Geometric placement uses \cmd{vadjust}, \cmd{rlap}/\cmd{llap}, and zero-dimension boxes whose internals are positioning machinery. \pkg{page-canons} suspends tagging during these operations and resumes after, preventing the placement scaffolding from affecting the structure tree.
+
+
 
 
 \chapter{Fullwidth and captions}\label{chapter:fullwidth}
@@ -1440,7 +1492,7 @@ Expected: $\approx 1/3$ of paper width (one cell of three).
 
 \section{Twocolumn}\label{sec:twocolumn}
 
-Loading \pkg{canons} in twocolumn mode emits a package warning; marginalia placement is not guaranteed. Not tested here.
+Loading \pkg{page-canons} in twocolumn mode emits a package warning; marginalia placement is not guaranteed. Not tested here.
 
 \section{Unknown canon}\label{sec:unknown}
 
