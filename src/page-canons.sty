@@ -1,10 +1,10 @@
 %% page-canons.sty
-%% Version: 3.9.3 2026-04-21
+%% Version: 3.9.4 2026-05-20
 %% Daniel Quigley <dquigleydev@gmail.com>
 %% License:     LaTeX Project Public License 1.3c
 
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesPackage{page-canons}[2026/04/21 v3.9.3 classical page canons with margins]
+\ProvidesPackage{page-canons}[2026/04/21 v3.9.4 classical page canons with margins]
 
 % lualatex is recommended for PDF/UA-2 accessibility
 \RequirePackage{iftex}
@@ -135,6 +135,8 @@
 
 % defaults
 \newif\ifpagecanon@showframe
+\newif\ifpagecanon@showbleed
+\newif\ifpagecanon@showgutter
 \newif\ifpagecanon@landscape
 \newif\ifpagecanon@debug
 \newif\ifpagecanon@insetup
@@ -154,6 +156,12 @@
 \def\pagecanon@gridtop{1}
 \def\pagecanon@gridbottom{2}
 \def\pagecanon@margins{symmetric}
+
+% bleed value strings
+\def\pagecanon@innerbleedval{0pt}
+\def\pagecanon@outerbleedval{0pt}
+\def\pagecanon@topbleedval{0pt}
+\def\pagecanon@bottombleedval{0pt}
 
 \ifpagecanon@article
   \def\pagecanon@margins{right}%
@@ -200,6 +208,10 @@
 \pagecanon@defkey{gridtop}{\def\pagecanon@gridtop{#1}}
 \pagecanon@defkey{gridbottom}{\def\pagecanon@gridbottom{#1}}
 \pagecanon@defkey{margins}{\def\pagecanon@margins{#1}}
+\pagecanon@defkey{innerbleed}{\def\pagecanon@innerbleedval{#1}}
+\pagecanon@defkey{outerbleed}{\def\pagecanon@outerbleedval{#1}}
+\pagecanon@defkey{topbleed}{\def\pagecanon@topbleedval{#1}}
+\pagecanon@defkey{bottombleed}{\def\pagecanon@bottombleedval{#1}}
 \pagecanon@defkey{debug}{%
   \pagecanon@ifeq{#1}{true}{\pagecanon@debugtrue}{%
   \pagecanon@ifeq{#1}{false}{\pagecanon@debugfalse}{\pagecanon@debugtrue}}}
@@ -255,6 +267,10 @@
 \@namedef{pagecanon@isourkey@gridtop}{}
 \@namedef{pagecanon@isourkey@gridbottom}{}
 \@namedef{pagecanon@isourkey@margins}{}
+\@namedef{pagecanon@isourkey@innerbleed}{}
+\@namedef{pagecanon@isourkey@outerbleed}{}
+\@namedef{pagecanon@isourkey@topbleed}{}
+\@namedef{pagecanon@isourkey@bottombleed}{}
 \@namedef{pagecanon@isourkey@debug}{}
 \@namedef{pagecanon@isourkey@marginsize}{}
 \@namedef{pagecanon@isourkey@size}{}
@@ -281,6 +297,10 @@
   \pagecanon@ifeq{\pagecanon@tmp@opt}{showframe}{%
     \pagecanon@showframetrue \pagecanon@appendgeomopt{showframe}%
     \def\pagecanon@tmp@processed{true}}{}%
+  \pagecanon@ifeq{\pagecanon@tmp@opt}{showbleed}{%
+    \pagecanon@showbleedtrue \def\pagecanon@tmp@processed{true}}{}%
+  \pagecanon@ifeq{\pagecanon@tmp@opt}{showgutter}{%
+    \pagecanon@showguttertrue \def\pagecanon@tmp@processed{true}}{}%
   \pagecanon@ifeq{\pagecanon@tmp@opt}{landscape}{%
     \pagecanon@landscapetrue \pagecanon@appendgeomopt{landscape}%
     \def\pagecanon@tmp@processed{true}}{}%
@@ -393,7 +413,7 @@
     \CM@resolvefont\CM@sn@font{\CM@snsize}%
   \fi}
 
-% initialise font at load time 
+% initialize font at load time 
 \CM@resolveallfont
 
 % per page counter
@@ -438,7 +458,7 @@
   }{%
     \PackageWarning{page-canons}{Unknown numbering '\CM@numbering', using global}}}}}}
 
-% \savepos, \lastxpos, \lastypos pdfTeX primitives, available in all modern engines
+% \savepos, \lastxpos, \lastypos
 \newif\ifCM@hassavepos \CM@hassavepostrue
 \let\CM@savepos\savepos
 \let\CM@xposprim\lastxpos
@@ -687,7 +707,7 @@
 \long\def\CM@marginnote@public#1{%
   \@ifnextchar[{\CM@marginnote@manual{#1}}{\CM@marginnote@impl{#1}{0pt}}}
 
-% thin wrapper: feeds explicit offset into unified implementation
+% feeds explicit offset into unified implementation
 \long\def\CM@marginnote@manual#1[#2]{\CM@marginnote@impl{#1}{#2}}
 
 % unified implementation
@@ -779,6 +799,196 @@
 \newlength\marginandsep  \newlength\fullwidthoverhang
 \newlength\overflowingheadlen \newlength\marginandtext
 \newlength\textandsep    \newlength{\FW@shift}
+
+% bleed subsystem
+\newlength{\pagecanon@innerbleed} \newlength{\pagecanon@outerbleed}
+\newlength{\pagecanon@topbleed}   \newlength{\pagecanon@bottombleed}
+\newlength{\pagecanon@leftbleed}  \newlength{\pagecanon@rightbleed}
+\newlength{\pagecanon@bleedH}     \newlength{\pagecanon@bleedV}
+\newlength{\pagecanon@trimw}      \newlength{\pagecanon@trimh}
+\newlength{\pagecanon@mediaw}     \newlength{\pagecanon@mediah}
+\newdimen\pagecanon@bpdim
+\newif\ifpagecanon@hasbleed
+\newif\ifpagecanon@bindingleft
+\newif\ifpagecanon@pdfout
+
+% trim-line / crop-mark proofing aid
+% \pagecanon@framerule is stroke width; override before \begin{document}
+\newdimen\pagecanon@framerule \pagecanon@framerule0.4pt
+\let\pagecanon@framecode\@empty
+
+% output target
+\ifluatex \pagecanon@pdfouttrue \else
+  \ifxetex \pagecanon@pdfouttrue \else
+    \ifpdf \pagecanon@pdfouttrue \else \pagecanon@pdfoutfalse \fi
+  \fi
+\fi
+
+% resolve value strings to lengths; clamp negatives; set totals
+\def\pagecanon@clampbleed#1#2{%
+  \ifdim#1<\z@
+    \PackageWarning{page-canons}{#2 < 0; clamped to 0pt}%
+    #1\z@
+  \fi}
+\def\pagecanon@resolvebleed{%
+  \setlength\pagecanon@innerbleed{\pagecanon@innerbleedval}%
+  \setlength\pagecanon@outerbleed{\pagecanon@outerbleedval}%
+  \setlength\pagecanon@topbleed{\pagecanon@topbleedval}%
+  \setlength\pagecanon@bottombleed{\pagecanon@bottombleedval}%
+  \pagecanon@clampbleed\pagecanon@innerbleed{innerbleed}%
+  \pagecanon@clampbleed\pagecanon@outerbleed{outerbleed}%
+  \pagecanon@clampbleed\pagecanon@topbleed{topbleed}%
+  \pagecanon@clampbleed\pagecanon@bottombleed{bottombleed}%
+  \setlength\pagecanon@bleedH{\dimexpr\pagecanon@innerbleed+\pagecanon@outerbleed\relax}%
+  \setlength\pagecanon@bleedV{\dimexpr\pagecanon@topbleed+\pagecanon@bottombleed\relax}%
+  % introspection: trim = finished page; media = trim + bleed (parity-free)
+  \setlength\pagecanon@trimw{\paperwidth}%
+  \setlength\pagecanon@trimh{\paperheight}%
+  \setlength\pagecanon@mediaw{\dimexpr\paperwidth+\pagecanon@bleedH\relax}%
+  \setlength\pagecanon@mediah{\dimexpr\paperheight+\pagecanon@bleedV\relax}%
+  \setlength\pagecanon@leftbleed{\pagecanon@innerbleed}%
+  \setlength\pagecanon@rightbleed{\pagecanon@outerbleed}%
+  \ifdim\dimexpr\pagecanon@bleedH+\pagecanon@bleedV\relax>\z@
+    \pagecanon@hasbleedtrue
+  \else
+    \pagecanon@hasbleedfalse
+  \fi
+  \ifpagecanon@hasbleed
+    \ifpagecanon@pdfout\else
+      \PackageWarning{page-canons}{%
+        bleed requested but the output route is not PDF;\MessageBreak
+        bleed disabled (use lualatex, xelatex, or pdflatex in PDF mode)}%
+      \pagecanon@hasbleedfalse
+    \fi
+  \fi}
+
+% map inner/outer bleed onto the physical left/right edge
+\def\pagecanon@bleedsides{%
+  \pagecanon@ifeq{\pagecanon@margins}{right}{%
+    \pagecanon@bindinglefttrue
+    \setlength\pagecanon@leftbleed{\pagecanon@innerbleed}%
+    \setlength\pagecanon@rightbleed{\pagecanon@outerbleed}%
+  }{\pagecanon@ifeq{\pagecanon@margins}{left}{%
+    \pagecanon@bindingleftfalse
+    \setlength\pagecanon@leftbleed{\pagecanon@outerbleed}%
+    \setlength\pagecanon@rightbleed{\pagecanon@innerbleed}%
+  }{%
+    \if@twoside
+      \ifodd\c@page \pagecanon@bindinglefttrue \else \pagecanon@bindingleftfalse \fi
+    \else
+      \pagecanon@bindinglefttrue
+    \fi
+    \ifpagecanon@bindingleft
+      \setlength\pagecanon@leftbleed{\pagecanon@innerbleed}%
+      \setlength\pagecanon@rightbleed{\pagecanon@outerbleed}%
+    \else
+      \setlength\pagecanon@leftbleed{\pagecanon@outerbleed}%
+      \setlength\pagecanon@rightbleed{\pagecanon@innerbleed}%
+    \fi
+  }}}
+
+% pdf box arrays are in bp (1/72 in); tex dimens are pt (1/72.27 in)
+% factor 7200/7227 = 0.99626401
+\def\pagecanon@mkbp#1#2{%
+  \pagecanon@bpdim#2\relax
+  \pagecanon@bpdim0.99626401\pagecanon@bpdim
+  \edef#1{\strip@pt\pagecanon@bpdim}}
+
+% emit /MediaBox, /TrimBox, /BleedBo
+\def\pagecanon@setpdfboxes{%
+  \pagecanon@mkbp\pagecanon@bb@mx{-\pagecanon@leftbleed}%
+  \pagecanon@mkbp\pagecanon@bb@my{-\pagecanon@bottombleed}%
+  \pagecanon@mkbp\pagecanon@bb@mX{\dimexpr\pagecanon@trimw+\pagecanon@rightbleed\relax}%
+  \pagecanon@mkbp\pagecanon@bb@mY{\dimexpr\pagecanon@trimh+\pagecanon@topbleed\relax}%
+  \pagecanon@mkbp\pagecanon@bb@tw{\pagecanon@trimw}%
+  \pagecanon@mkbp\pagecanon@bb@th{\pagecanon@trimh}%
+  \edef\pagecanon@bb@attr{%
+    /MediaBox [\pagecanon@bb@mx\space\pagecanon@bb@my\space
+               \pagecanon@bb@mX\space\pagecanon@bb@mY]\space
+    /TrimBox [0 0 \pagecanon@bb@tw\space\pagecanon@bb@th]\space
+    /BleedBox [\pagecanon@bb@mx\space\pagecanon@bb@my\space
+               \pagecanon@bb@mX\space\pagecanon@bb@mY]}%
+  \ifluatex
+    \expandafter\pagecanon@setluaattr\expandafter{\pagecanon@bb@attr}%
+  \else\ifxetex
+    \special{pdf:put @thispage <<\pagecanon@bb@attr>>}%
+  \else
+    \expandafter\pdfpageattr\expandafter{\pagecanon@bb@attr}%
+  \fi\fi
+  % trim line + crop marks (showbleed), in stream (= trim) coordinates.
+  \let\pagecanon@bleedcode\@empty
+  \ifpagecanon@showbleed
+    \ifxetex\else
+      \pagecanon@mkbp\pagecanon@bb@lw{\pagecanon@framerule}%
+      \edef\pagecanon@bleedcode{%
+        q\space1 0 1 RG\space\pagecanon@bb@lw\space w\space
+        % trim rectangle [0 0 trimw trimh]:
+        0 0 m\space\pagecanon@bb@tw\space0 l\space
+        \pagecanon@bb@tw\space\pagecanon@bb@th\space l\space
+        0 \pagecanon@bb@th\space l\space h\space S\space
+        % crop marks: trim corner out to the media edge along each axis.
+        \pagecanon@bb@mx\space0 m\space0 0 l\space S\space
+        0 \pagecanon@bb@my\space m\space0 0 l\space S\space
+        \pagecanon@bb@mX\space0 m\space\pagecanon@bb@tw\space0 l\space S\space
+        \pagecanon@bb@tw\space\pagecanon@bb@my\space m\space\pagecanon@bb@tw\space0 l\space S\space
+        \pagecanon@bb@mx\space\pagecanon@bb@th\space m\space0 \pagecanon@bb@th\space l\space S\space
+        0 \pagecanon@bb@mY\space m\space0 \pagecanon@bb@th\space l\space S\space
+        \pagecanon@bb@mX\space\pagecanon@bb@th\space m\space\pagecanon@bb@tw\space\pagecanon@bb@th\space l\space S\space
+        \pagecanon@bb@tw\space\pagecanon@bb@mY\space m\space\pagecanon@bb@tw\space\pagecanon@bb@th\space l\space S\space
+        Q}%
+    \fi
+  \fi}
+\def\pagecanon@setluaattr#1{\pdfvariable pageattr{#1}}
+
+% dashed line along the gutter (showgutter), in stream (= trim) coordinates
+\def\pagecanon@buildguttercode{%
+  \pagecanon@mkbp\pagecanon@bb@lw{\pagecanon@framerule}%
+  \pagecanon@mkbp\pagecanon@bb@th{\pagecanon@trimh}%
+  \ifpagecanon@bindingleft
+    \pagecanon@mkbp\pagecanon@bb@gx{\pagecanon@gutterlength}%
+  \else
+    \pagecanon@mkbp\pagecanon@bb@gx{\dimexpr\pagecanon@trimw-\pagecanon@gutterlength\relax}%
+  \fi
+  \edef\pagecanon@guttercode{%
+    q\space0 0 1 RG\space\pagecanon@bb@lw\space w\space[3 3] 0 d\space
+    \pagecanon@bb@gx\space0 m\space\pagecanon@bb@gx\space\pagecanon@bb@th\space l\space S\space Q}}
+
+% emit a page-coordinate literal (absolute, bp)
+\def\pagecanon@pageliteral#1{%
+  \ifluatex \pdfextension literal page{#1}%
+  \else \pdfliteral page{#1}\fi}
+\def\pagecanon@drawmaybe{%
+  \ifx\pagecanon@bleedcode\@empty\else
+    \expandafter\pagecanon@pageliteral\expandafter{\pagecanon@bleedcode}%
+  \fi
+  \ifx\pagecanon@guttercode\@empty\else
+    \expandafter\pagecanon@pageliteral\expandafter{\pagecanon@guttercode}%
+  \fi}
+
+% shipout
+\def\pagecanon@shipoutdraw{%
+  \setlength\pagecanon@trimw{\paperwidth}%
+  \setlength\pagecanon@trimh{\paperheight}%
+  \let\pagecanon@bleedcode\@empty
+  \let\pagecanon@guttercode\@empty
+  \ifpagecanon@hasbleed
+    \pagecanon@bleedsides
+    \pagecanon@setpdfboxes
+  \else
+    \ifpagecanon@showgutter \pagecanon@bleedsides \fi
+  \fi
+  \ifpagecanon@showgutter
+    \ifdim\pagecanon@gutterlength>\z@
+      \ifxetex\else \pagecanon@buildguttercode \fi
+    \fi
+  \fi
+  \def\pagecanon@tmp@any{}%
+  \ifx\pagecanon@bleedcode\@empty\else \def\pagecanon@tmp@any{x}\fi
+  \ifx\pagecanon@guttercode\@empty\else \def\pagecanon@tmp@any{x}\fi
+  \ifx\pagecanon@tmp@any\@empty\else
+    \setbox\ShipoutBox\hbox{\pagecanon@drawmaybe \box\ShipoutBox}%
+  \fi}
+\AddToHook{shipout/before}{\pagecanon@shipoutdraw}
 
 % canon defs
 \def\pagecanon@vdg#1#2{%
@@ -879,11 +1089,6 @@
   \fi}
 
 % gutter
-% symmetric: add to \pagecanon@innermargin (geometry.inner = spine under twoside).
-% else: add to \pagecanon@outermargin, which is emitted into the spine slot
-%       under antisymmetric (swapped) and left/right (spine on that side).
-% marginpar clamp: subtract the gutter under non-symmetric layouts because
-% the spine margin is shared between the binding allowance and the marginpar.
 \def\pagecanon@applyguttergeometry{%
   \pagecanon@ifeq{\pagecanon@margins}{symmetric}{%
     \advance\pagecanon@innermargin by\pagecanon@gutterlength\relax
@@ -1019,6 +1224,7 @@
 
 % main setup
 \def\pagecanon@setup{%
+  \pagecanon@resolvebleed
   \if@twocolumn
     \ifpagecanon@twocolwarn\else \pagecanon@twocolwarntrue
       \PackageWarning{page-canons}{twocolumn mode: page-canons may behave unexpectedly}\fi
@@ -1084,6 +1290,12 @@
   \overflowingheadlen=\dimexpr\textwidth+\marginparsep+\marginparwidth\relax
   \fullwidthoverhang=\dimexpr\marginparwidth+\marginparsep\relax
   \pagecanon@setFWcaption
+  \ifpagecanon@showbleed\ifpagecanon@hasbleed\else
+    \PackageInfo{page-canons}{showbleed set but no bleed; trim line omitted}%
+  \fi\fi
+  \ifpagecanon@showgutter\ifdim\pagecanon@gutterlength>\z@\else
+    \PackageInfo{page-canons}{showgutter set but gutter is 0pt; line omitted}%
+  \fi\fi
   \CM@syncmarginstate
   \CM@collision@reset}
 
@@ -1114,5 +1326,118 @@
   \CM@ifeq{\pagecanon@margins}{left}{\reversemarginpar}{\normalmarginpar}}}
 
 \def\pagecanonmargins{\pagecanon@margins}
+
+
+% bleed (left/right resolve per page at shipout; seeded to recto in the body):
+\let\canonsinnerbleed\pagecanon@innerbleed
+\let\canonsouterbleed\pagecanon@outerbleed
+\let\canonstopbleed\pagecanon@topbleed
+\let\canonsbottombleed\pagecanon@bottombleed
+\let\canonsleftbleed\pagecanon@leftbleed
+\let\canonsrightbleed\pagecanon@rightbleed
+\let\canonsbleedwidth\pagecanon@bleedH
+\let\canonsbleedheight\pagecanon@bleedV
+% paper / trim / media (trim == finished page; media == trim + bleed):
+\let\canonspaperwidth\paperwidth
+\let\canonspaperheight\paperheight
+\let\canonstrimwidth\paperwidth
+\let\canonstrimheight\paperheight
+\let\canonsmediawidth\pagecanon@mediaw
+\let\canonsmediaheight\pagecanon@mediah
+% canon margins (values handed to geometry; 0pt under canon=false):
+\let\canonsinnermargin\pagecanon@innermargin
+\let\canonsoutermargin\pagecanon@outermargin
+\let\canonstopmargin\pagecanon@topmargin
+\let\canonsbottommargin\pagecanon@bottommargin
+\let\canonsgutter\pagecanon@gutterlength
+\let\canonsleafwidth\pagecanon@leafwidth
+\let\canonscellwidth\pagecanon@cellwidth
+\let\canonscellheight\pagecanon@cellheight
+% resolved layout (aliases to registers geometry set):
+\let\canonstextwidth\textwidth
+\let\canonstextheight\textheight
+\let\canonsmarginparwidth\marginparwidth
+\let\canonsmarginparsep\marginparsep
+\let\canonsfootskip\footskip
+\let\canonsheadheight\headheight
+\let\canonsheadsep\headsep
+\let\canonsoddsidemargin\oddsidemargin
+\let\canonsevensidemargin\evensidemargin
+\let\canonscolumnsep\columnsep
+\let\canonslinewidth\linewidth
+% derived helper widths the package builds for full-width, marginalia work:
+\let\canonsmarginandtext\marginandtext
+\let\canonsmarginandsep\marginandsep
+\let\canonstextandsep\textandsep
+\let\canonsoverflowinghead\overflowingheadlen
+\let\canonsfullwidthoverhang\fullwidthoverhang
+
+% 1pt = 0.3514598 mm; print a register as "<pt> (<mm> mm)".
+\def\pagecanon@metricline#1#2{%
+  \pagecanon@bpdim#2\relax
+  \pagecanon@bpdim0.3514598\pagecanon@bpdim
+  \edef\pagecanon@tmp@mm{\strip@pt\pagecanon@bpdim}%
+  \typeout{\space\space#1 = \the#2\space(\pagecanon@tmp@mm\space mm)}}
+
+% every metric to the log/console
+\newcommand\pagecanonmetrics{%
+  \typeout{page-canons metrics (canon=\pagecanon@canon, margins=\pagecanon@margins):}%
+  \typeout{ bleed:}%
+  \pagecanon@metricline{innerbleed}\canonsinnerbleed
+  \pagecanon@metricline{outerbleed}\canonsouterbleed
+  \pagecanon@metricline{topbleed}\canonstopbleed
+  \pagecanon@metricline{bottombleed}\canonsbottombleed
+  \pagecanon@metricline{leftbleed (this-page)}\canonsleftbleed
+  \pagecanon@metricline{rightbleed (this-page)}\canonsrightbleed
+  \pagecanon@metricline{bleedwidth}\canonsbleedwidth
+  \pagecanon@metricline{bleedheight}\canonsbleedheight
+  \typeout{ paper / trim / media:}%
+  \pagecanon@metricline{trimwidth}\canonstrimwidth
+  \pagecanon@metricline{trimheight}\canonstrimheight
+  \pagecanon@metricline{mediawidth}\canonsmediawidth
+  \pagecanon@metricline{mediaheight}\canonsmediaheight
+  \typeout{ canon margins (0pt if canon=false):}%
+  \pagecanon@metricline{innermargin}\canonsinnermargin
+  \pagecanon@metricline{outermargin}\canonsoutermargin
+  \pagecanon@metricline{topmargin}\canonstopmargin
+  \pagecanon@metricline{bottommargin}\canonsbottommargin
+  \pagecanon@metricline{gutter}\canonsgutter
+  \pagecanon@metricline{leafwidth}\canonsleafwidth
+  \pagecanon@metricline{cellwidth}\canonscellwidth
+  \pagecanon@metricline{cellheight}\canonscellheight
+  \typeout{ resolved layout:}%
+  \pagecanon@metricline{textwidth}\canonstextwidth
+  \pagecanon@metricline{textheight}\canonstextheight
+  \pagecanon@metricline{marginparwidth}\canonsmarginparwidth
+  \pagecanon@metricline{marginparsep}\canonsmarginparsep
+  \pagecanon@metricline{footskip}\canonsfootskip
+  \pagecanon@metricline{headheight}\canonsheadheight
+  \pagecanon@metricline{headsep}\canonsheadsep
+  \pagecanon@metricline{oddsidemargin}\canonsoddsidemargin
+  \pagecanon@metricline{evensidemargin}\canonsevensidemargin}
+
+% opt-in: also bind the bare names (\the\innerbleed etc.)
+\def\pagecanon@expose#1#2{%
+  \@ifundefined{#1}{\global\expandafter\let\csname#1\endcsname#2}{%
+    \PackageInfo{page-canons}{bare name
+      \expandafter\string\csname#1\endcsname\space already defined; not exposed}}}
+\newcommand\pagecanonexposemetrics{%
+  \pagecanon@expose{innerbleed}\pagecanon@innerbleed
+  \pagecanon@expose{outerbleed}\pagecanon@outerbleed
+  \pagecanon@expose{topbleed}\pagecanon@topbleed
+  \pagecanon@expose{bottombleed}\pagecanon@bottombleed
+  \pagecanon@expose{leftbleed}\pagecanon@leftbleed
+  \pagecanon@expose{rightbleed}\pagecanon@rightbleed
+  \pagecanon@expose{bleedwidth}\pagecanon@bleedH
+  \pagecanon@expose{bleedheight}\pagecanon@bleedV
+  \pagecanon@expose{trimwidth}\paperwidth
+  \pagecanon@expose{trimheight}\paperheight
+  \pagecanon@expose{mediawidth}\pagecanon@mediaw
+  \pagecanon@expose{mediaheight}\pagecanon@mediah
+  \pagecanon@expose{innermargin}\pagecanon@innermargin
+  \pagecanon@expose{outermargin}\pagecanon@outermargin
+  \pagecanon@expose{bottommargin}\pagecanon@bottommargin
+  \pagecanon@expose{gutter}\pagecanon@gutterlength
+  \pagecanon@expose{leafwidth}\pagecanon@leafwidth}
 
 \endinput
