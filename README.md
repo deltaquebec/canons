@@ -10,6 +10,8 @@ The **page-canons** package implements classical and classical-inspired page con
 
 Versions 1.x shipped three packages (`canons`, `canons-margins`, `canons-fullwidth`) coordinating roughly a dozen external dependencies (`marginnote`, `marginfix`, `sidenotes`, `perpage`, `caption`, `adjustbox`, `ifoddpage`, `changepage`, `xpatch`, `kvoptions`, `pgfkeys`, `xcolor`, ...). Version 3.x has foled everything into one `.sty` with in-house implementations of odd/even-page detection, keyval parsing, margin notes, sidenotes, per-page counters, and the fullwidth environment. If `sidenotes` is loaded, canons defers to it for styling hooks; otherwise, canons supplies its own.
 
+New in 3.9.4: support for bleed and trim.
+
 Do not ask what happened to version 2.x....
 
 ## Requirements
