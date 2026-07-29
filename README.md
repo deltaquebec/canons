@@ -223,8 +223,8 @@ Conceptual inspiration from Jan Tschichold, Robert Bringhurst, and Edward Tufte.
 
 ---
 
-**Version**: 3.9.3
-**Last updated**: May 2026
+**Version**: 3.9.4
+**Last updated**: July 2026
 **Status**: Active development
 
 ---
